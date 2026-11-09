@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
-import { getPaper, getProjectForUser, listMembers, listPaperCredibility } from '@/lib/data/queries';
+import { getCatalogStatus, getPaper, getProjectForUser, listMembers, listPaperCredibility } from '@/lib/data/queries';
 import { CredibilityCell } from '@/components/library/Credibility';
 import { PublicationEditor } from '@/components/library/PublicationEditor';
 import { geminiConfigured } from '@/lib/ai/extract';
@@ -26,7 +26,7 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
   if (!project) notFound();
   const paper = await getPaper(paperId);
   if (!paper || paper.projectId !== id) notFound();
-  const [members, credMap] = await Promise.all([listMembers(id), listPaperCredibility(id)]);
+  const [members, credMap, catalog] = await Promise.all([listMembers(id), listPaperCredibility(id), getCatalogStatus()]);
   const cred = credMap.get(paper.id);
   const nameOf = (uid: string) => members.find((m) => m.userId === uid)?.displayName ?? 'thành viên cũ';
 
@@ -80,7 +80,7 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
       <section className="space-y-2 border border-line bg-white p-4">
         <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Độ tin cậy & thông tin xuất bản</h3>
         <div className="grid gap-4 sm:grid-cols-2">
-          <CredibilityCell cred={cred} pub={paper.pub} detailed />
+          <CredibilityCell cred={cred} pub={paper.pub} detailed catalogReady={catalog.sjr.count > 0} />
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
             <dt className="text-zinc-500">Tạp chí</dt>
             <dd>{paper.pub.journal ?? '—'}</dd>

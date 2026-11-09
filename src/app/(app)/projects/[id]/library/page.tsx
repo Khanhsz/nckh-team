@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
-import { getProjectForUser, listPaperCredibility, listPapers } from '@/lib/data/queries';
+import { getCatalogStatus, getProjectForUser, listPaperCredibility, listPapers } from '@/lib/data/queries';
 import { serviceAccountEmail } from '@/lib/google/drive';
 import { geminiConfigured, geminiModel } from '@/lib/ai/extract';
 import { PAPER_FIELDS, VIEW_PRESETS } from '@/lib/ai/fields';
@@ -41,7 +41,8 @@ export default async function LibraryPage({
   const user = await requireUser();
   const project = await getProjectForUser(id, user.id);
   if (!project) notFound();
-  const [papers, credMap] = await Promise.all([listPapers(id), listPaperCredibility(id)]);
+  const [papers, credMap, catalog] = await Promise.all([listPapers(id), listPaperCredibility(id), getCatalogStatus()]);
+  const catalogReady = catalog.sjr.count > 0;
 
   const botEmail = serviceAccountEmail();
   const aiReady = geminiConfigured();
@@ -165,6 +166,20 @@ export default async function LibraryPage({
     <div className="space-y-2 px-4 pb-2 pt-3">
       <AutoRefresh seconds={60} />
 
+      {!catalogReady && (
+        <div className="flex flex-wrap items-center gap-2 border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">
+          <span>
+            <b>Chưa có danh mục SCImago</b> nên cột Độ tin cậy chưa xếp hạng Q được (số trích dẫn và tên tạp chí vẫn hiện).
+            {project.role === 'owner' ? ' Nạp file CSV một lần là xong:' : ' Nhờ trưởng nhóm nạp ở tab Thành viên & cài đặt.'}
+          </span>
+          {project.role === 'owner' && (
+            <Link href={`/projects/${id}/settings#catalog`} className="bg-sky-900 px-2.5 py-1 font-medium text-white hover:bg-sky-700">
+              Nạp danh mục tạp chí →
+            </Link>
+          )}
+        </div>
+      )}
+
       {/* Thanh nguồn Drive: một dòng */}
       <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border border-line bg-white px-3 py-2 text-xs">
         <span className="flex min-w-0 items-center gap-1.5">
@@ -243,7 +258,7 @@ export default async function LibraryPage({
                   {p.status === 'error' && p.error && <p className="mt-1 line-clamp-2 text-[11px] text-rose-700" title={p.error}>{p.error}</p>}
                 </td>
                 <td className="border-b border-r border-line px-3 py-2">
-                  <CredibilityCell cred={credMap.get(p.id)} pub={p.pub} />
+                  <CredibilityCell cred={credMap.get(p.id)} pub={p.pub} catalogReady={catalogReady} />
                 </td>
                 {columns.map((c) => (
                   <td key={c.key} className="border-b border-line px-3 py-2 text-zinc-800">

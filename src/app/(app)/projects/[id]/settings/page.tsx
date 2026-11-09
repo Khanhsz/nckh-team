@@ -86,7 +86,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         </Section>
       )}
 
-      <div className="xl:col-span-2">
+      <div id="catalog" className="scroll-mt-4 xl:col-span-2">
         <Section title="Danh mục tạp chí — dùng để đánh giá độ tin cậy bài đọc (dùng chung mọi dự án)">
           <CatalogManager status={catalog} canEdit={isOwner} />
           <p className="mt-3 text-[11px] text-zinc-500">

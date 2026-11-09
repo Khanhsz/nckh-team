@@ -23,7 +23,18 @@ function flagText(f: JournalFlag): string {
 }
 
 /** Ô "Độ tin cậy": hạng Q, SJR, số trích dẫn, cảnh báo săn mồi */
-export function CredibilityCell({ cred, pub, detailed }: { cred: PaperCredibility | undefined; pub: PaperPublication; detailed?: boolean }) {
+export function CredibilityCell({
+  cred,
+  pub,
+  detailed,
+  catalogReady = true
+}: {
+  cred: PaperCredibility | undefined;
+  pub: PaperPublication;
+  detailed?: boolean;
+  /** false = chưa nạp danh mục SCImago → không thể kết luận "không thuộc Scopus" */
+  catalogReady?: boolean;
+}) {
   const discontinued = cred?.flags.filter((f) => f.kind === 'scopus_discontinued') ?? [];
   const beall = cred?.flags.filter((f) => f.kind !== 'scopus_discontinued') ?? [];
   const known = Boolean(pub.journal || pub.issns.length);
@@ -40,7 +51,11 @@ export function CredibilityCell({ cred, pub, detailed }: { cred: PaperCredibilit
           </span>
         ) : known && cred?.rankTitle ? (
           <span className="rounded-sm border border-line px-1.5 py-0.5 text-[10px] leading-none text-zinc-500">SJR chưa xếp Q</span>
-        ) : discontinued.length ? null : known ? (
+        ) : discontinued.length ? null : known && !catalogReady ? (
+          <span className="rounded-sm border border-dashed border-sky-300 px-1.5 py-0.5 text-[10px] leading-none text-sky-700" title="Chưa nạp danh mục SCImago nên chưa xếp hạng được. Trưởng nhóm nạp ở tab Thành viên & cài đặt → Danh mục tạp chí.">
+            Chờ nạp SJR
+          </span>
+        ) : known ? (
           <span className="rounded-sm border border-dashed border-zinc-300 px-1.5 py-0.5 text-[10px] leading-none text-zinc-500" title="Không tìm thấy tạp chí trong danh mục SCImago (Scopus). Có thể là hội thảo, sách, preprint hoặc tạp chí không thuộc Scopus — không có nghĩa là bài kém.">
             Không thuộc Scopus
           </span>
