@@ -9,7 +9,7 @@ import { createSign } from 'crypto';
 
 export class DriveError extends Error {
   constructor(
-    public code: 'not_configured' | 'auth' | 'not_found' | 'forbidden' | 'not_folder' | 'too_large' | 'http',
+    public code: 'not_configured' | 'auth' | 'not_found' | 'forbidden' | 'not_folder' | 'not_doc' | 'too_large' | 'http',
     message: string
   ) {
     super(message);
