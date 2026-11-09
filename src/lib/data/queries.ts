@@ -86,11 +86,18 @@ export const listPapers = cache(async (projectId: string): Promise<Paper[]> => {
   const sb = await createClient();
   const { data, error } = await sb
     .from('papers')
-    .select('id, project_id, file_name, status, created_by, created_at')
+    .select('*')
     .eq('project_id', projectId)
-    .order('created_at', { ascending: false });
+    .order('file_name');
   if (error) throw error;
   return (data ?? []).map(mapPaper);
+});
+
+export const getPaper = cache(async (paperId: string): Promise<Paper | null> => {
+  if (!/^[0-9a-f-]{36}$/i.test(paperId)) return null;
+  const sb = await createClient();
+  const { data } = await sb.from('papers').select('*').eq('id', paperId).maybeSingle();
+  return data ? mapPaper(data) : null;
 });
 
 export async function countMyProjects(userId: string): Promise<number> {

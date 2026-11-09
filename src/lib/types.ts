@@ -21,6 +21,9 @@ export interface Project {
   ownerId: string;
   startDate: string;
   endDate: string;
+  driveFolderId: string | null;
+  driveFolderName: string | null;
+  driveSyncedAt: string | null;
 }
 
 export interface ProjectWithRole extends Project {
@@ -59,14 +62,35 @@ export interface Task {
   updatedAt: string;
 }
 
+export type PaperStatus = 'pending' | 'processing' | 'completed' | 'error' | 'stale';
+
 export interface Paper {
   id: string;
   projectId: string;
   fileName: string;
-  status: string;
+  status: PaperStatus;
   createdBy: string;
   createdAt: string;
+  driveFileId: string | null;
+  driveWebLink: string | null;
+  driveModifiedTime: string | null;
+  fileSize: number | null;
+  extractedAt: string | null;
+  model: string | null;
+  error: string | null;
+  fields: Record<string, string>;
+  warnings: string[];
+  /** field key → người xác nhận */
+  verified: Record<string, { by: string; at: string }>;
 }
+
+export const PAPER_STATUS_LABEL: Record<PaperStatus, string> = {
+  pending: 'Chưa trích xuất',
+  processing: 'Đang trích xuất…',
+  completed: 'Đã trích xuất',
+  error: 'Lỗi',
+  stale: 'File đã đổi — cần trích xuất lại'
+};
 
 export const TASK_STATUSES: TaskStatus[] = ['todo', 'doing', 'review', 'done'];
 

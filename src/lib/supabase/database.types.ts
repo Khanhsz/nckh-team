@@ -25,14 +25,17 @@ export type Database = {
         Row: {
           created_at: string; created_by: string; error: string | null; evidence: Json; fields: Json; file_name: string; id: string;
           model: string | null; project_id: string; status: string; storage_path: string | null; updated_at: string; updated_by: string | null; warnings: Json;
+          drive_file_id: string | null; drive_modified_time: string | null; drive_web_link: string | null; file_size: number | null; extracted_at: string | null; verified: Json;
         };
         Insert: {
           created_at?: string; created_by?: string; error?: string | null; evidence?: Json; fields?: Json; file_name: string; id?: string;
           model?: string | null; project_id: string; status?: string; storage_path?: string | null; updated_at?: string; updated_by?: string | null; warnings?: Json;
+          drive_file_id?: string | null; drive_modified_time?: string | null; drive_web_link?: string | null; file_size?: number | null; extracted_at?: string | null; verified?: Json;
         };
         Update: {
           created_at?: string; created_by?: string; error?: string | null; evidence?: Json; fields?: Json; file_name?: string; id?: string;
           model?: string | null; project_id?: string; status?: string; storage_path?: string | null; updated_at?: string; updated_by?: string | null; warnings?: Json;
+          drive_file_id?: string | null; drive_modified_time?: string | null; drive_web_link?: string | null; file_size?: number | null; extracted_at?: string | null; verified?: Json;
         };
         Relationships: [
           { foreignKeyName: 'papers_project_id_fkey'; columns: ['project_id']; isOneToOne: false; referencedRelation: 'projects'; referencedColumns: ['id'] }
@@ -82,14 +85,17 @@ export type Database = {
         Row: {
           code: string | null; created_at: string; end_date: string; id: string; name: string; owner_id: string; research_model: string;
           research_topic: string; start_date: string; synthesis: string; synthesis_updated_at: string | null; updated_at: string;
+          drive_folder_id: string | null; drive_folder_name: string | null; drive_synced_at: string | null;
         };
         Insert: {
           code?: string | null; created_at?: string; end_date?: string; id?: string; name: string; owner_id: string; research_model?: string;
           research_topic?: string; start_date?: string; synthesis?: string; synthesis_updated_at?: string | null; updated_at?: string;
+          drive_folder_id?: string | null; drive_folder_name?: string | null; drive_synced_at?: string | null;
         };
         Update: {
           code?: string | null; created_at?: string; end_date?: string; id?: string; name?: string; owner_id?: string; research_model?: string;
           research_topic?: string; start_date?: string; synthesis?: string; synthesis_updated_at?: string | null; updated_at?: string;
+          drive_folder_id?: string | null; drive_folder_name?: string | null; drive_synced_at?: string | null;
         };
         Relationships: [];
       };
@@ -118,6 +124,7 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       accept_project_invite: { Args: { p_token: string }; Returns: string };
+      mark_drive_synced: { Args: { p_project_id: string }; Returns: undefined };
       consume_ai_quota: { Args: { p_action: string; p_project_id: string }; Returns: boolean };
       create_project_invite: { Args: { p_project_id: string; p_role?: string }; Returns: string };
       project_can_edit: { Args: { p_project_id: string }; Returns: boolean };
