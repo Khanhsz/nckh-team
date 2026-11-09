@@ -16,17 +16,18 @@ export default async function ProjectLayout({ children, params }: { children: Re
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="border-b border-line bg-white px-8 pt-6">
-        <p className="text-xs text-zinc-500">
-          {project.code && <span className="mr-2 font-mono">{project.code}</span>}
-          Vai trò của bạn: <b>{ROLE_LABEL[project.role]}</b>
-        </p>
-        <h1 className="text-xl font-semibold">{project.name}</h1>
-        {project.description && <p className="mt-1 max-w-3xl text-sm text-zinc-600">{project.description}</p>}
-        <p className="mt-2 text-xs text-zinc-500">
-          {formatFull(project.startDate)} → {formatFull(project.endDate)} · Trưởng nhóm: {owner?.displayName ?? '—'} · {members.length} thành viên
-        </p>
-        <nav className="mt-4 flex gap-1">
+      <header className="border-b border-line bg-white px-4 pt-2.5">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
+          {project.code && <span className="font-mono text-xs text-zinc-500">{project.code}</span>}
+          <h1 className="min-w-0 max-w-full truncate text-base font-semibold" title={project.description ?? project.name}>
+            {project.name}
+          </h1>
+          <span className="text-xs text-zinc-500">
+            {formatFull(project.startDate)} → {formatFull(project.endDate)} · Trưởng nhóm: {owner?.displayName ?? '—'} · {members.length} thành viên · Vai trò:{' '}
+            <b>{ROLE_LABEL[project.role]}</b>
+          </span>
+        </div>
+        <nav className="mt-1.5 flex gap-1 overflow-x-auto">
           <NavLink variant="tab" href={`/projects/${id}/gantt`}>Masterplan</NavLink>
           <NavLink variant="tab" href={`/projects/${id}/tasks`}>Công việc</NavLink>
           <NavLink variant="tab" href={`/projects/${id}/library`}>Thư viện bài đọc</NavLink>
