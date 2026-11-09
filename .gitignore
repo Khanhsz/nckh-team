@@ -1,0 +1,14 @@
+node_modules/
+.next/
+out/
+next-env.d.ts
+*.tsbuildinfo
+
+# Dữ liệu giả lập cục bộ
+.data/
+
+# Bí mật — KHÔNG BAO GIỜ commit
+.env
+.env*.local
+*service-account*.json
+*-key.json

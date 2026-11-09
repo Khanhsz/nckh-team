@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-paper: #faf9f6;
+  --color-paper-2: #f3f2ee;
+  --color-line: #e4e2dc;
+  --color-ink: #18181b;
+  --color-accent: #065f46;
+  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+}
+
+html,
+body {
+  background: var(--color-paper);
+  color: var(--color-ink);
+}
+
+/* Thanh cuộn mảnh cho vùng Gantt */
+.thin-scroll::-webkit-scrollbar {
+  height: 10px;
+  width: 10px;
+}
+.thin-scroll::-webkit-scrollbar-thumb {
+  background: #d6d4ce;
+  border-radius: 6px;
+}
