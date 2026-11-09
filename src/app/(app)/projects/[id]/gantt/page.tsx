@@ -4,13 +4,13 @@ import { requireUser } from '@/lib/auth/session';
 import { getProjectForUser, listMembers, listMilestones, listTasks } from '@/lib/data/queries';
 import { todayISO } from '@/lib/dates';
 import { TASK_STATUS_LABEL, TASK_STATUSES } from '@/lib/types';
-import { GanttChart, type GanttZoom } from '@/components/gantt/GanttChart';
+import { TimelineCalendar, type TimelineZoom } from '@/components/timeline/TimelineCalendar';
 import { STATUS_STYLE } from '@/components/ui/badges';
 
-const ZOOMS: { id: GanttZoom; label: string }[] = [
-  { id: 'day', label: 'Ngày' },
-  { id: 'week', label: 'Tuần' },
-  { id: 'month', label: 'Tháng' }
+const ZOOMS: { id: TimelineZoom; label: string }[] = [
+  { id: '2w', label: '2 tuần' },
+  { id: 'month', label: 'Tháng' },
+  { id: 'quarter', label: 'Quý' }
 ];
 
 export default async function GanttPage({
@@ -22,7 +22,7 @@ export default async function GanttPage({
 }) {
   const { id } = await params;
   const { zoom: z, created, joined } = await searchParams;
-  const zoom: GanttZoom = z === 'day' || z === 'month' ? z : 'week';
+  const zoom: TimelineZoom = z === '2w' || z === 'quarter' ? z : 'month';
 
   const user = await requireUser();
   const project = await getProjectForUser(id, user.id);
@@ -88,7 +88,7 @@ export default async function GanttPage({
           Trưởng nhóm sẽ lập kế hoạch sớm.
         </div>
       ) : (
-        <GanttChart
+        <TimelineCalendar
           project={project}
           milestones={milestones}
           tasks={tasks}
@@ -101,7 +101,7 @@ export default async function GanttPage({
       )}
 
       <p className="text-xs text-zinc-500">
-        Mũi tên đỏ nét đứt: việc được xếp bắt đầu trước cả việc tiên quyết — nên xem lại kế hoạch. Thêm/sửa mốc ở tab Thành viên & cài đặt.
+        Mỗi làn là một thành viên; các việc trùng ngày tự xếp thành nhiều tầng. Thêm/sửa mốc ở tab Thành viên & cài đặt. Viền đỏ = quá hạn.
       </p>
     </div>
   );

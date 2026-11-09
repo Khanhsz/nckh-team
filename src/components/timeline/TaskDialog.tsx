@@ -7,7 +7,7 @@ import { diffDays, isValidISODate } from '@/lib/dates';
 import { createTaskQuickAction, deleteTaskByIdAction, updateTaskAction } from '@/app/(app)/projects/[id]/tasks/actions';
 
 export type DialogState =
-  | { mode: 'create'; milestoneId: string | null; startDate: string; dueDate: string }
+  | { mode: 'create'; milestoneId: string | null; startDate: string; dueDate: string; assigneeId?: string | null; title?: string }
   | { mode: 'edit'; task: Task };
 
 const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-800 disabled:bg-paper-2 disabled:text-zinc-500';
@@ -38,9 +38,11 @@ export function TaskDialog({
   const editing = state.mode === 'edit' ? state.task : null;
   const canEdit = isOwner || (role === 'editor' && (!editing || editing.assigneeId === userId));
 
-  const [title, setTitle] = useState(editing?.title ?? '');
+  const [title, setTitle] = useState(editing?.title ?? (state.mode === 'create' ? state.title ?? '' : ''));
   const [milestoneId, setMilestoneId] = useState<string>(editing ? editing.milestoneId ?? '' : state.mode === 'create' ? state.milestoneId ?? '' : '');
-  const [assigneeId, setAssigneeId] = useState<string>(editing ? editing.assigneeId ?? '' : isOwner ? '' : userId);
+  const [assigneeId, setAssigneeId] = useState<string>(
+    editing ? editing.assigneeId ?? '' : !isOwner ? userId : state.mode === 'create' && state.assigneeId ? state.assigneeId : ''
+  );
   const [startDate, setStartDate] = useState(editing?.startDate ?? (state.mode === 'create' ? state.startDate : ''));
   const [dueDate, setDueDate] = useState(editing?.dueDate ?? (state.mode === 'create' ? state.dueDate : ''));
   const [status, setStatus] = useState<TaskStatus>(editing?.status ?? 'todo');
