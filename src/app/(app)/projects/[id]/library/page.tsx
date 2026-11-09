@@ -55,7 +55,7 @@ export default async function LibraryPage({
   const RELS = [
     { id: '', label: 'Tất cả' },
     { id: 'q12', label: 'Q1–Q2' },
-    { id: 'warn', label: '⚠ Có cảnh báo' },
+    { id: 'warn', label: '⚠ Cảnh báo / lưu ý' },
     { id: 'none', label: 'Không xếp hạng' }
   ] as const;
   const relFilter = RELS.find((r) => r.id === rel)?.id ?? '';
@@ -236,7 +236,9 @@ export default async function LibraryPage({
                       ? 'shadow-[inset_4px_0_0_#e11d48]'
                       : flagLevel(credMap.get(p.id)) === 'warn'
                         ? 'shadow-[inset_4px_0_0_#f59e0b]'
-                        : ''
+                        : flagLevel(credMap.get(p.id)) === 'watch'
+                          ? 'shadow-[inset_4px_0_0_#facc15]'
+                          : ''
                   }`}
                 >
                   <Link href={`/projects/${id}/library/${p.id}`} className="line-clamp-3 font-medium underline-offset-2 hover:underline" title={p.fileName}>

@@ -1,20 +1,20 @@
 import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
-import { getCatalogStatus, getProjectForUser, listMembers, listMilestones } from '@/lib/data/queries';
+import { getCatalogStatus, getProjectForUser, listMembers, listMilestones, listWatchlist } from '@/lib/data/queries';
 import { CatalogManager } from '@/components/settings/CatalogManager';
 import { addDays, formatFull, todayISO } from '@/lib/dates';
 import { ROLE_LABEL } from '@/lib/types';
 import { Avatar } from '@/components/ui/badges';
-import { AddMilestoneForm, InviteBox, MemberRoleSelect, ProjectInfoForm } from '@/components/settings/SettingsForms';
-import { deleteMilestoneAction, removeMemberAction } from './actions';
+import { AddMilestoneForm, AddWatchForm, InviteBox, MemberRoleSelect, ProjectInfoForm } from '@/components/settings/SettingsForms';
+import { deleteMilestoneAction, removeMemberAction, removeWatchAction } from './actions';
 
 export default async function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const user = await requireUser();
   const project = await getProjectForUser(id, user.id);
   if (!project) notFound();
-  const [members, milestones, catalog] = await Promise.all([listMembers(id), listMilestones(id), getCatalogStatus()]);
+  const [members, milestones, catalog, watch] = await Promise.all([listMembers(id), listMilestones(id), getCatalogStatus(), listWatchlist(id)]);
   const isOwner = project.role === 'owner';
 
   return (
@@ -93,6 +93,35 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
             Hạng Q là xếp hạng của <b>tạp chí</b> theo SCImago (dữ liệu Scopus), không phải của từng bài. Danh sách Beall đã ngừng cập nhật từ 2017 và
             từng gây tranh cãi — chỉ dùng như tín hiệu để kiểm tra thêm, không phải kết luận.
           </p>
+        </Section>
+      </div>
+
+      <div id="watchlist" className="scroll-mt-4 xl:col-span-2">
+        <Section title={`👁 Danh sách theo dõi của nhóm (${watch.length})`}>
+          <p className="mb-3 text-xs text-zinc-600">
+            Nhà xuất bản / tạp chí nhóm muốn dè chừng (không phải danh sách săn mồi). Bài thuộc danh sách sẽ hiện nhãn <b>👁 Nhóm lưu ý</b> trong Thư viện.
+            Nhà xuất bản khớp theo từ (vd. “MDPI” khớp “MDPI AG”); tạp chí khớp đúng tên.
+          </p>
+          {watch.length > 0 ? (
+            <ul className="mb-3 divide-y divide-line border border-line">
+              {watch.map((w) => (
+                <li key={w.id} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
+                  <span className="w-20 shrink-0 text-[11px] uppercase tracking-wider text-zinc-500">{w.kind === 'publisher' ? 'NXB' : 'Tạp chí'}</span>
+                  <span className="font-medium">{w.name}</span>
+                  {w.note && <span className="min-w-0 flex-1 truncate text-xs text-zinc-500" title={w.note}>— {w.note}</span>}
+                  {isOwner && (
+                    <form action={removeWatchAction} className="ml-auto">
+                      <input type="hidden" name="id" value={w.id} />
+                      <button className="text-xs text-zinc-400 hover:text-rose-700">Gỡ</button>
+                    </form>
+                  )}
+                </li>
+              ))}
+            </ul>
+          ) : (
+            <p className="mb-3 text-sm text-zinc-500">Chưa có mục nào.</p>
+          )}
+          {isOwner ? <AddWatchForm projectId={id} /> : <p className="text-xs text-zinc-500">Chỉ trưởng nhóm sửa được danh sách này.</p>}
         </Section>
       </div>
 

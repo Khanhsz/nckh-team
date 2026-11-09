@@ -7,14 +7,17 @@ const Q_STYLE: Record<string, string> = {
   Q4: 'bg-orange-500 text-white'
 };
 
-export function flagLevel(c: PaperCredibility | undefined): 'danger' | 'warn' | null {
+export function flagLevel(c: PaperCredibility | undefined): 'danger' | 'warn' | 'watch' | null {
   if (!c) return null;
   if (c.flags.some((f) => f.kind === 'scopus_discontinued')) return 'danger';
-  if (c.flags.length) return 'warn';
+  if (c.flags.some((f) => f.kind === 'beall_journal' || f.kind === 'beall_publisher')) return 'warn';
+  if (c.flags.length) return 'watch';
   return null;
 }
 
 function flagText(f: JournalFlag): string {
+  if (f.kind === 'team_watch')
+    return `${f.publisher ? `Nhà xuất bản “${f.publisher}”` : `Tạp chí “${f.title ?? '?'}”`} nằm trong danh sách theo dõi của nhóm${f.reason ? ` — ${f.reason}` : ''}.`;
   if (f.kind === 'scopus_discontinued')
     return `Scopus đã ngừng chỉ mục tạp chí “${f.title ?? '?'}”${f.since ? ` từ ${f.since}` : ''}${f.reason ? ` — lý do: ${f.reason}` : ''}. Bài đăng trước thời điểm này vẫn được Scopus giữ lại.`;
   if (f.kind === 'beall_publisher')
@@ -36,7 +39,8 @@ export function CredibilityCell({
   catalogReady?: boolean;
 }) {
   const discontinued = cred?.flags.filter((f) => f.kind === 'scopus_discontinued') ?? [];
-  const beall = cred?.flags.filter((f) => f.kind !== 'scopus_discontinued') ?? [];
+  const beall = cred?.flags.filter((f) => f.kind === 'beall_journal' || f.kind === 'beall_publisher') ?? [];
+  const watch = cred?.flags.filter((f) => f.kind === 'team_watch') ?? [];
   const known = Boolean(pub.journal || pub.issns.length);
 
   return (
@@ -86,6 +90,13 @@ export function CredibilityCell({
         <p className="w-fit border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-amber-900" title={beall.map(flagText).join('\n')}>
           ⚠ Nghi săn mồi (Beall)
           {detailed && beall.map((f, i) => <span key={i} className="mt-0.5 block font-normal">{flagText(f)}</span>)}
+        </p>
+      )}
+
+      {watch.length > 0 && (
+        <p className="w-fit border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-yellow-900" title={watch.map(flagText).join('\n')}>
+          👁 Nhóm lưu ý{!detailed && watch[0].reason ? `: ${watch[0].reason.slice(0, 40)}${watch[0].reason.length > 40 ? '…' : ''}` : ''}
+          {detailed && watch.map((f, i) => <span key={i} className="mt-0.5 block font-normal">{flagText(f)}</span>)}
         </p>
       )}
 

@@ -106,3 +106,35 @@ export async function updateMilestoneAction(milestoneId: string, patch: { dueDat
   refresh();
   return {};
 }
+
+/* ---------------- Danh sách theo dõi của nhóm (trưởng nhóm) ---------------- */
+
+export async function addWatchAction(_prev: FormState, fd: FormData): Promise<FormState> {
+  await requireUser();
+  const projectId = str(fd, 'projectId');
+  const kind = str(fd, 'kind') === 'journal' ? 'journal' : 'publisher';
+  const name = str(fd, 'name').slice(0, 300);
+  const note = str(fd, 'note').slice(0, 500) || null;
+  if (name.length < 2) return { error: 'Nhập tên nhà xuất bản hoặc tạp chí.' };
+  const supabase = await createClient();
+  const { error } = await supabase.from('project_watchlist').insert({ project_id: projectId, kind, name, note });
+  if (error) return { error: error.code === '23505' ? 'Tên này đã có trong danh sách.' : dbErrorMessage(error, 'Chỉ trưởng nhóm được sửa danh sách theo dõi.') };
+  refresh();
+  return { ok: true, message: `Đã thêm “${name}”.` };
+}
+
+export async function removeWatchAction(fd: FormData): Promise<void> {
+  await requireUser();
+  const supabase = await createClient();
+  await supabase.from('project_watchlist').delete().eq('id', str(fd, 'id'));
+  refresh();
+}
+
+export async function quickWatchAction(projectId: string, kind: 'publisher' | 'journal', name: string): Promise<{ error?: string }> {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.from('project_watchlist').insert({ project_id: projectId, kind, name: name.trim().slice(0, 300) });
+  if (error && error.code !== '23505') return { error: dbErrorMessage(error, 'Chỉ trưởng nhóm được sửa danh sách theo dõi.') };
+  refresh();
+  return {};
+}

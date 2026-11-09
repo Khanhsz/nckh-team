@@ -5,6 +5,7 @@ import type { FormState } from '@/lib/auth/actions';
 import type { ProjectRole } from '@/lib/types';
 import {
   addMilestoneAction,
+  addWatchAction,
   createInviteAction,
   setMemberRoleAction,
   updateProjectAction,
@@ -151,5 +152,37 @@ export function MemberRoleSelect({ projectId, userId, role }: { projectId: strin
       </select>
       {error && <p className="mt-1 text-[11px] text-rose-700">{error}</p>}
     </div>
+  );
+}
+
+export function AddWatchForm({ projectId }: { projectId: string }) {
+  const [state, action] = useActionState<FormState, FormData>(addWatchAction, {});
+  const ref = useRef<HTMLFormElement>(null);
+  useEffect(() => {
+    if (state.ok) ref.current?.reset();
+  }, [state]);
+  return (
+    <form ref={ref} action={action} className="space-y-2">
+      <input type="hidden" name="projectId" value={projectId} />
+      <div className="flex flex-wrap items-end gap-2">
+        <div>
+          <label className={label}>Loại</label>
+          <select name="kind" defaultValue="publisher" className={field}>
+            <option value="publisher">Nhà xuất bản</option>
+            <option value="journal">Tạp chí</option>
+          </select>
+        </div>
+        <div className="min-w-40 flex-1">
+          <label className={label}>Tên</label>
+          <input name="name" required maxLength={300} className={field} placeholder="vd. MDPI, Frontiers, Hindawi" />
+        </div>
+        <div className="min-w-48 flex-[2]">
+          <label className={label}>Ghi chú lý do (tuỳ chọn)</label>
+          <input name="note" maxLength={500} className={field} placeholder="vd. mega-journal, review nhanh — ưu tiên nguồn khác" />
+        </div>
+        <SubmitButton pendingText="…">Thêm</SubmitButton>
+      </div>
+      <FormMessage error={state.error} message={state.ok ? state.message : undefined} />
+    </form>
   );
 }

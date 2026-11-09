@@ -107,7 +107,16 @@ export interface PaperPublication {
   checkedAt: string | null;
 }
 
-export type JournalFlagKind = 'scopus_discontinued' | 'beall_journal' | 'beall_publisher';
+export type JournalFlagKind = 'scopus_discontinued' | 'beall_journal' | 'beall_publisher' | 'team_watch';
+
+/** Danh sách theo dõi riêng của nhóm (NXB / tạp chí cần dè chừng) */
+export interface WatchItem {
+  id: string;
+  kind: 'publisher' | 'journal';
+  name: string;
+  note: string | null;
+  createdAt: string;
+}
 export interface JournalFlag {
   kind: JournalFlagKind;
   title: string | null;

@@ -21,6 +21,12 @@ export type Database = {
           { foreignKeyName: 'milestones_project_id_fkey'; columns: ['project_id']; isOneToOne: false; referencedRelation: 'projects'; referencedColumns: ['id'] }
         ];
       };
+      project_watchlist: {
+        Row: { id: string; project_id: string; kind: string; name: string; name_norm: string | null; note: string | null; created_by: string; created_at: string };
+        Insert: { id?: string; project_id: string; kind: string; name: string; note?: string | null; created_by?: string; created_at?: string };
+        Update: { id?: string; project_id?: string; kind?: string; name?: string; note?: string | null; created_by?: string; created_at?: string };
+        Relationships: [];
+      };
       journal_ranks: {
         Row: { sourceid: number; title: string; title_norm: string | null; issns: string[]; sjr: number | null; quartile: string | null; h_index: number | null; categories: string | null; publisher: string | null; rank_year: number | null; updated_at: string };
         Insert: { sourceid: number; title: string; issns?: string[]; sjr?: number | null; quartile?: string | null; h_index?: number | null; categories?: string | null; publisher?: string | null; rank_year?: number | null; updated_at?: string };

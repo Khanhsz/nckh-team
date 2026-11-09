@@ -1,7 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { createClient } from '../supabase/server';
-import type { JournalFlag, Member, Milestone, Paper, PaperCredibility, ProjectDocument, ProjectWithRole, Task } from '../types';
+import type { JournalFlag, WatchItem, Member, Milestone, Paper, PaperCredibility, ProjectDocument, ProjectWithRole, Task } from '../types';
 import { asRole, mapMilestone, mapPaper, mapProject, mapTask } from './mappers';
 
 /**
@@ -171,3 +171,9 @@ export async function getCatalogStatus(): Promise<CatalogStatus> {
     beall: { publishers: bp, journals: bj, updatedAt: bLatest.data?.updated_at ?? null }
   };
 }
+
+export const listWatchlist = cache(async (projectId: string): Promise<WatchItem[]> => {
+  const sb = await createClient();
+  const { data } = await sb.from('project_watchlist').select('id, kind, name, note, created_at').eq('project_id', projectId).order('kind').order('name');
+  return (data ?? []).map((r) => ({ id: r.id, kind: r.kind === 'journal' ? 'journal' : 'publisher', name: r.name, note: r.note, createdAt: r.created_at }));
+});

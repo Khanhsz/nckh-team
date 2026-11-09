@@ -4,6 +4,7 @@ import { requireUser } from '@/lib/auth/session';
 import { getCatalogStatus, getPaper, getProjectForUser, listMembers, listPaperCredibility } from '@/lib/data/queries';
 import { CredibilityCell } from '@/components/library/Credibility';
 import { PublicationEditor } from '@/components/library/PublicationEditor';
+import { QuickWatch } from '@/components/library/QuickWatch';
 import { geminiConfigured } from '@/lib/ai/extract';
 import { PAPER_FIELDS } from '@/lib/ai/fields';
 import { PAPER_STATUS_LABEL } from '@/lib/types';
@@ -107,6 +108,7 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
           </dl>
         </div>
         <PublicationEditor paperId={paper.id} pub={paper.pub} canEdit={canEdit} />
+        {project.role === 'owner' && <QuickWatch projectId={id} publisher={paper.pub.publisher} journal={paper.pub.journal} />}
       </section>
 
       {hasResult ? (
