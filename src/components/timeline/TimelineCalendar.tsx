@@ -18,12 +18,13 @@ import { TaskDialog, type DialogState } from './TaskDialog';
  * Quyền thật sự do RLS + trigger của Supabase kiểm tra.
  */
 
-export type TimelineZoom = '2w' | 'month' | 'quarter';
-export const DAY_W: Record<TimelineZoom, number> = { '2w': 64, month: 36, quarter: 14 };
-const MIN_DW = 6;
-const MAX_DW = 120;
+export type TimelineZoom = 'week' | 'month';
+/** Số ngày vừa khung nhìn cho mỗi mức xem nhanh. Mức "Tháng" cũng là mức thu nhỏ tối đa. */
+const PRESET_DAYS: Record<TimelineZoom, number> = { week: 7, month: 31 };
+const PRESET_LABEL: Record<TimelineZoom, string> = { week: 'Tuần', month: 'Tháng' };
+const MAX_DAYS_IN_VIEW = 31;
+const MIN_DAYS_IN_VIEW = 5;
 const DW_KEY = 'nckh-timeline-day-width';
-const clampDw = (v: number) => Math.min(MAX_DW, Math.max(MIN_DW, Math.round(v * 10) / 10));
 const LEFT_W = 200;
 const SCALE_H = 46;
 const MS_H = 30;
@@ -100,22 +101,47 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
 
   const isOwner = role === 'owner';
 
-  // ---- Độ rộng ngày co giãn tự do (px/ngày) ----
-  const [dw, setDw] = useState<number>(DAY_W[initialZoom]);
+  // ---- Độ rộng ngày co giãn trong khoảng [1 tháng vừa khung … ~5 ngày vừa khung] ----
+  const [viewW, setViewW] = useState(1100); // bề rộng vùng ngày nhìn thấy (px)
+  const minDw = viewW / MAX_DAYS_IN_VIEW;
+  const maxDw = Math.max(viewW / MIN_DAYS_IN_VIEW, minDw + 1);
+  const clampDw = (v: number) => Math.min(maxDw, Math.max(minDw, Math.round(v * 10) / 10));
+  const [dw, setDw] = useState<number>(1100 / PRESET_DAYS[initialZoom]);
   const dwRef = useRef(dw);
   dwRef.current = dw;
   const pendingScroll = useRef<number | null>(null);
   const stretchRef = useRef<{ x0: number; d0: number; dw0: number; left0: number } | null>(null);
   const [stretching, setStretching] = useState(false);
 
-  useEffect(() => {
+  // Đo bề rộng khung nhìn (và theo dõi khi đổi cỡ cửa sổ); khôi phục độ rộng đã lưu
+  useLayoutEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const measure = () => Math.max(280, el.clientWidth - LEFT_W);
+    const w = measure();
+    setViewW(w);
+    let saved = 0;
     try {
-      const saved = Number(localStorage.getItem(DW_KEY));
-      if (saved >= MIN_DW && saved <= MAX_DW) setDw(saved);
+      saved = Number(localStorage.getItem(DW_KEY)) || 0;
     } catch {
       /* trình duyệt chặn localStorage */
     }
+    setDw(saved > 0 ? saved : w / PRESET_DAYS[initialZoom]);
+    const ro = new ResizeObserver(() => setViewW(measure()));
+    ro.observe(el);
+    return () => ro.disconnect();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+  // Khi khung nhìn đổi cỡ: nếu đang ở mức Tuần/Tháng thì giữ đúng 7/31 ngày vừa khung, nếu không thì chỉ ép vào giới hạn
+  const prevViewW = useRef(viewW);
+  useEffect(() => {
+    const prev = prevViewW.current;
+    prevViewW.current = viewW;
+    const preset = (Object.keys(PRESET_DAYS) as TimelineZoom[]).find((z) => Math.abs(dw - prev / PRESET_DAYS[z]) < 0.6);
+    if (preset && prev !== viewW) setDw(viewW / PRESET_DAYS[preset]);
+    else if (dw < minDw - 0.05 || dw > maxDw + 0.05) setDw(clampDw(dw));
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [viewW]);
   useEffect(() => {
     try {
       localStorage.setItem(DW_KEY, String(dw));
@@ -520,13 +546,13 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
       <div className="flex flex-wrap items-center gap-2 text-xs">
         <span className="text-zinc-500">Độ rộng ngày</span>
         <div className="flex border border-line bg-white">
-          {(Object.keys(DAY_W) as TimelineZoom[]).map((z) => (
+          {(Object.keys(PRESET_DAYS) as TimelineZoom[]).map((z) => (
             <button
               key={z}
-              onClick={() => zoomTo(DAY_W[z])}
-              className={`px-2.5 py-1 ${Math.abs(dw - DAY_W[z]) < 0.5 ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-paper-2'}`}
+              onClick={() => zoomTo(viewW / PRESET_DAYS[z])}
+              className={`px-2.5 py-1 ${Math.abs(dw - viewW / PRESET_DAYS[z]) < 0.6 ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-paper-2'}`}
             >
-              {z === '2w' ? '2 tuần' : z === 'month' ? 'Tháng' : 'Quý'}
+              {PRESET_LABEL[z]}
             </button>
           ))}
         </div>
@@ -535,8 +561,8 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
         </button>
         <input
           type="range"
-          min={MIN_DW}
-          max={MAX_DW}
+          min={Math.ceil(minDw)}
+          max={Math.floor(maxDw)}
           step={1}
           value={Math.round(dw)}
           onChange={(e) => zoomTo(Number(e.target.value))}
@@ -547,6 +573,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
           +
         </button>
         <span className="w-16 font-mono text-zinc-600">{Math.round(dw)} px/ngày</span>
+        <span className="text-zinc-500">≈ {Math.round(viewW / dw)} ngày trong khung</span>
         <span className="text-zinc-400">· kéo trên thanh ngày hoặc Ctrl + cuộn chuột để co giãn</span>
         <span className="ml-auto flex items-center gap-3 text-zinc-500" aria-label="Chú thích màu">
           {TASK_CATEGORIES.map((c) => (
