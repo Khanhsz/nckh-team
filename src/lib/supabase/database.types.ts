@@ -21,6 +21,24 @@ export type Database = {
           { foreignKeyName: 'milestones_project_id_fkey'; columns: ['project_id']; isOneToOne: false; referencedRelation: 'projects'; referencedColumns: ['id'] }
         ];
       };
+      paper_refs: {
+        Row: { paper_id: string; project_id: string; refs: Json; ref_count: number; fetched_at: string };
+        Insert: { paper_id: string; project_id: string; refs?: Json; ref_count?: number; fetched_at?: string };
+        Update: { refs?: Json; ref_count?: number; fetched_at?: string };
+        Relationships: [];
+      };
+      project_ref_meta: {
+        Row: { project_id: string; doi: string; title: string | null; authors: string | null; year: number | null; container: string | null; issns: string[]; cited_by: number | null; fetched_at: string };
+        Insert: { project_id: string; doi: string; title?: string | null; authors?: string | null; year?: number | null; container?: string | null; issns?: string[]; cited_by?: number | null; fetched_at?: string };
+        Update: { title?: string | null; authors?: string | null; year?: number | null; container?: string | null; issns?: string[]; cited_by?: number | null; fetched_at?: string };
+        Relationships: [];
+      };
+      project_ref_dismissed: {
+        Row: { project_id: string; ref_key: string; dismissed_by: string; created_at: string };
+        Insert: { project_id: string; ref_key: string; dismissed_by?: string; created_at?: string };
+        Update: { ref_key?: string };
+        Relationships: [];
+      };
       project_constructs: {
         Row: { project_id: string; raw_key: string; canonical: string; updated_at: string };
         Insert: { project_id: string; raw_key: string; canonical: string; updated_at?: string };

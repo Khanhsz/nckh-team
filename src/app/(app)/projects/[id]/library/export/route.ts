@@ -37,7 +37,7 @@ async function backfill(papers: Paper[], canWrite: boolean) {
       if (supabase) await supabase.from('papers').update({ csl: w.csl as unknown as Json }).eq('id', p.id);
     }
   };
-  await Promise.all(Array.from({ length: 6 }, worker));
+  await Promise.all(Array.from({ length: 3 }, worker));
 }
 
 export async function GET(request: NextRequest, { params }: { params: Promise<{ id: string }> }) {

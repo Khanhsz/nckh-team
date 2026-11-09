@@ -3,7 +3,8 @@ import Link from 'next/link';
 const TABS = [
   { key: 'table', href: '', label: '▦ Bảng bài đọc' },
   { key: 'ask', href: '/ask', label: '💬 Hỏi thư viện' },
-  { key: 'map', href: '/map', label: '🕸 Bản đồ biến' }
+  { key: 'map', href: '/map', label: '🕸 Bản đồ biến' },
+  { key: 'missing', href: '/missing', label: '🧭 Bài nền tảng còn thiếu' }
 ] as const;
 
 /** Chuyển giữa các chế độ của Thư viện bài đọc */

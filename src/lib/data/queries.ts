@@ -3,6 +3,8 @@ import { cache } from 'react';
 import { createClient } from '../supabase/server';
 import type { JournalFlag, WatchItem, Member, Milestone, Paper, PaperCredibility, ProjectDocument, ProjectWithRole, Task } from '../types';
 import { asRole, mapMilestone, mapPaper, mapProject, mapTask } from './mappers';
+import type { RefItem } from '../scholar/publication';
+import type { RefMeta } from '../library/missing';
 
 /**
  * Mọi truy vấn chạy bằng phiên của người dùng → RLS của Supabase quyết định họ thấy gì.
@@ -189,4 +191,36 @@ export async function listConstructMap(projectId: string): Promise<Map<string, s
   const sb = await createClient();
   const { data } = await sb.from('project_constructs').select('raw_key, canonical').eq('project_id', projectId).limit(5000);
   return new Map((data ?? []).map((r) => [r.raw_key, r.canonical]));
+}
+
+/* ---------------- Bài nền tảng còn thiếu ---------------- */
+export async function listPaperRefs(projectId: string): Promise<Map<string, RefItem[]>> {
+  const sb = await createClient();
+  const { data } = await sb.from('paper_refs').select('paper_id, refs').eq('project_id', projectId).limit(2000);
+  return new Map((data ?? []).map((r) => [r.paper_id, Array.isArray(r.refs) ? (r.refs as unknown as RefItem[]) : []]));
+}
+
+export async function listRefMeta(projectId: string): Promise<Map<string, RefMeta>> {
+  const sb = await createClient();
+  const { data } = await sb.from('project_ref_meta').select('doi, title, authors, year, container, issns, cited_by').eq('project_id', projectId).limit(5000);
+  return new Map(
+    (data ?? []).map((r) => [r.doi, { doi: r.doi, title: r.title, authors: r.authors, year: r.year, container: r.container, issns: r.issns ?? [], citedBy: r.cited_by }])
+  );
+}
+
+export async function listDismissedRefs(projectId: string): Promise<Set<string>> {
+  const sb = await createClient();
+  const { data } = await sb.from('project_ref_dismissed').select('ref_key').eq('project_id', projectId).limit(5000);
+  return new Set((data ?? []).map((r) => r.ref_key));
+}
+
+/** Hạng SCImago theo ISSN (cho danh sách gợi ý) */
+export async function listRanksByIssns(issns: string[]): Promise<Map<string, { quartile: string | null; title: string }>> {
+  const uniq = [...new Set(issns)].slice(0, 400);
+  if (uniq.length === 0) return new Map();
+  const sb = await createClient();
+  const { data } = await sb.from('journal_ranks').select('title, issns, quartile, rank_year').overlaps('issns', uniq).order('rank_year', { ascending: false }).limit(1000);
+  const map = new Map<string, { quartile: string | null; title: string }>();
+  for (const r of data ?? []) for (const i of r.issns) if (!map.has(i)) map.set(i, { quartile: r.quartile, title: r.title });
+  return map;
 }

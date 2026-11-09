@@ -85,13 +85,21 @@ interface CrossrefWork {
   score?: number;
 }
 
-async function crossrefGet(url: string): Promise<unknown | null> {
+async function crossrefGet(url: string, attempt = 0): Promise<unknown | null> {
   try {
-    const res = await fetch(url, { headers: { 'user-agent': UA, accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(9000) });
+    // CROSSREF_MAILTO (tuỳ chọn): email liên hệ để vào "polite pool" của Crossref (ổn định hơn)
+    const mailto = process.env.CROSSREF_MAILTO;
+    const full = mailto ? `${url}${url.includes('?') ? '&' : '?'}mailto=${encodeURIComponent(mailto)}` : url;
+    const res = await fetch(full, { headers: { 'user-agent': UA, accept: 'application/json' }, cache: 'no-store', signal: AbortSignal.timeout(12000) });
+    if ((res.status === 429 || res.status >= 500) && attempt < 3) {
+      const wait = Number(res.headers.get('retry-after')) * 1000 || 1500 * (attempt + 1) ** 2;
+      await new Promise((r) => setTimeout(r, Math.min(wait, 8000)));
+      return crossrefGet(url, attempt + 1);
+    }
     if (!res.ok) return null;
     return await res.json();
   } catch {
-    return null;
+    return attempt < 1 ? crossrefGet(url, attempt + 1) : null;
   }
 }
 
@@ -228,4 +236,43 @@ export async function resolvePublication(input: {
 /** Lấy lại bản ghi Crossref đầy đủ theo DOI (dùng khi xuất trích dẫn cho bài cũ chưa có tác giả) */
 export async function crossrefByDoi(doi: string): Promise<Omit<PublicationMeta, 'source'> | null> {
   return crossrefLookup({ doi });
+}
+
+/** Một mục trong danh mục tài liệu tham khảo (Crossref "reference") */
+export interface RefItem {
+  doi: string | null;
+  title: string | null;
+  author: string | null;
+  year: number | null;
+  journal: string | null;
+  text: string | null;
+}
+
+interface CrossrefRef {
+  DOI?: string;
+  'article-title'?: string;
+  'volume-title'?: string;
+  author?: string;
+  year?: string;
+  'journal-title'?: string;
+  unstructured?: string;
+}
+
+/** Danh mục tài liệu tham khảo của một bài theo DOI. null = không tra được; [] = NXB không công bố danh mục. */
+export async function crossrefReferences(doi: string): Promise<RefItem[] | null> {
+  const d = normalizeDoi(doi);
+  if (!d) return null;
+  const j = (await crossrefGet(`https://api.crossref.org/works/${encodeURIComponent(d)}`)) as { message?: { reference?: CrossrefRef[] } } | null;
+  if (!j?.message) return null;
+  return (j.message.reference ?? []).slice(0, 400).map((r) => {
+    const text = r.unstructured?.replace(/\s+/g, ' ').trim().slice(0, 400) ?? null;
+    return {
+      doi: normalizeDoi(r.DOI),
+      title: (r['article-title'] ?? r['volume-title'])?.replace(/\s+/g, ' ').trim().slice(0, 300) ?? null,
+      author: r.author?.trim().slice(0, 100) ?? (text ? text.split(/[,.(]/)[0].trim().slice(0, 100) || null : null),
+      year: parseYear(r.year ?? text?.match(/\((19|20)\d\d[a-z]?\)/)?.[0] ?? null),
+      journal: r['journal-title']?.trim().slice(0, 200) ?? null,
+      text
+    };
+  });
 }
