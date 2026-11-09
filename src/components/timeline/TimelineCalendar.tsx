@@ -39,6 +39,8 @@ interface Lane {
   label: string;
   sub: string | null;
   memberId: string | null;
+  /** Làn "Cả nhóm" — ghim ngay dưới dải mốc */
+  team?: boolean;
   tasks: Task[];
   slots: Map<string, number>;
   top: number;
@@ -227,22 +229,25 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   // ---- Làn: thành viên có thể nhận việc + "Chưa giao" ----
   const lanes: Lane[] = useMemo(() => {
     const workers = members.filter((m) => m.role !== 'viewer');
-    const defs: { key: string; label: string; sub: string | null; memberId: string | null }[] = workers.map((m) => ({
+    const teamTasks = tasks.filter((t) => t.isTeam);
+    const defs: { key: string; label: string; sub: string | null; memberId: string | null; team?: boolean }[] = [];
+    if (teamTasks.length || isOwner) defs.push({ key: 'team', label: '👥 Cả nhóm', sub: 'Việc chung · chia subtask cho từng người', memberId: null, team: true });
+    defs.push(...workers.map((m) => ({
       key: m.userId,
       label: m.displayName + (m.userId === userId ? ' (bạn)' : ''),
       sub: m.role === 'owner' ? 'Trưởng nhóm' : null,
       memberId: m.userId
-    }));
+    })));
     const known = new Set(workers.map((m) => m.userId));
-    const others = tasks.filter((t) => t.assigneeId && !known.has(t.assigneeId));
+    const others = tasks.filter((t) => !t.isTeam && t.assigneeId && !known.has(t.assigneeId));
     if (others.length) defs.push({ key: 'others', label: 'Người không còn trong nhóm', sub: null, memberId: null });
-    const unassigned = tasks.filter((t) => !t.assigneeId);
+    const unassigned = tasks.filter((t) => !t.assigneeId && !t.isTeam);
     if (unassigned.length || isOwner) defs.push({ key: 'none', label: 'Chưa giao', sub: 'Kéo việc sang làn một người để giao', memberId: null });
 
     let top = 0;
     return defs.map((d) => {
       const own =
-        d.key === 'none' ? unassigned : d.key === 'others' ? others : tasks.filter((t) => t.assigneeId === d.memberId);
+        d.key === 'team' ? teamTasks : d.key === 'none' ? unassigned : d.key === 'others' ? others : tasks.filter((t) => !t.isTeam && t.assigneeId === d.memberId);
       const { slots, rows } = pack(own);
       const height = PAD * 2 + (rows + 1) * CHIP_H + rows * GAP; // +1 tầng trống để quét tạo việc
       const lane = { ...d, tasks: own, slots, top, height };
@@ -254,7 +259,19 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   const laneByKey = new Map(lanes.map((l) => [l.key, l]));
   const laneOfTask = (t: Task) => lanes.find((l) => l.slots.has(t.id))!;
 
-  const canCreateIn = (lane: Lane) => isOwner || (role === 'editor' && lane.memberId === userId);
+  const canCreateIn = (lane: Lane) => isOwner || (!lane.team && role === 'editor' && lane.memberId === userId);
+  const teamLane = lanes.find((l) => l.team);
+  const teamRef = useRef<HTMLDivElement>(null);
+  // Rê chuột lên một việc → làm nổi việc cha và các subtask cùng nhóm
+  const [hoverId, setHoverId] = useState<string | null>(null);
+  const hoverFamily = (() => {
+    if (!hoverId) return null;
+    const h = tasks.find((t) => t.id === hoverId);
+    if (!h) return null;
+    const root = h.parentId ?? h.id;
+    const ids = new Set([root, ...tasks.filter((t) => t.parentId === root).map((t) => t.id)]);
+    return ids.size > 1 ? ids : null;
+  })();
   const canDragTask = (t: Task) => isOwner || (role === 'editor' && t.assigneeId === userId);
 
   // ---- Thang thời gian ----
@@ -283,10 +300,13 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   };
 
   const laneAtY = (clientY: number): Lane | null => {
+    // Làn "Cả nhóm" dính ở trên khi cuộn → đo theo vị trí thật của nó
+    const tr = teamRef.current?.getBoundingClientRect();
+    if (teamLane && tr && clientY >= tr.top && clientY < tr.bottom) return teamLane;
     const rect = bodyRef.current?.getBoundingClientRect();
     if (!rect) return null;
     const y = clientY - rect.top;
-    return lanes.find((l) => y >= l.top && y < l.top + l.height) ?? null;
+    return lanes.find((l) => !l.team && y >= l.top && y < l.top + l.height) ?? null;
   };
 
   // ---- Lưu ----
@@ -327,7 +347,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     let laneKey = drag.laneKey;
     if (drag.kind === 'move' && isOwner) {
       const lane = laneAtY(e.clientY);
-      if (lane && lane.key !== 'others') laneKey = lane.key;
+      if (lane && lane.key !== 'others' && !(lane.team && t.parentId)) laneKey = lane.key;
     }
     if (dDays !== drag.dDays || moved !== drag.moved || laneKey !== drag.laneKey) setDrag({ ...drag, dDays, moved, laneKey });
   };
@@ -345,14 +365,15 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     const datesChanged = next.startDate !== orig.startDate || next.dueDate !== orig.dueDate;
     if (!reassigned && !datesChanged) return;
     const assigneeId = reassigned ? toLane!.memberId : orig.assigneeId;
-    const who = reassigned ? (toLane!.memberId ? toLane!.label.replace(' (bạn)', '') : 'Chưa giao') : null;
+    const isTeam = reassigned ? Boolean(toLane!.team) : orig.isTeam;
+    const who = reassigned ? (toLane!.team ? 'cả nhóm' : toLane!.memberId ? toLane!.label.replace(' (bạn)', '') : 'Chưa giao') : null;
     run(
-      () => setTasks((ts) => ts.map((x) => (x.id === orig.id ? { ...x, startDate: next.startDate, dueDate: next.dueDate, assigneeId } : x))),
+      () => setTasks((ts) => ts.map((x) => (x.id === orig.id ? { ...x, startDate: next.startDate, dueDate: next.dueDate, assigneeId, isTeam } : x))),
       () => setTasks((ts) => ts.map((x) => (x.id === orig.id ? orig : x))),
       () =>
         updateTaskAction(orig.id, {
           ...(datesChanged ? { startDate: next.startDate, dueDate: next.dueDate } : {}),
-          ...(reassigned ? { assigneeId } : {})
+          ...(reassigned ? (isTeam ? { isTeam: true } : { assigneeId, isTeam: false }) : {})
         }),
       `“${orig.title}”${datesChanged ? ` · ${formatShort(next.startDate)} → ${formatShort(next.dueDate)}` : ''}${who ? ` · giao cho ${who}` : ''}`
     );
@@ -404,6 +425,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
       projectId: project.id,
       milestoneId: ms?.id ?? null,
       parentId: null,
+      isTeam: Boolean(lane?.team),
       title,
       description: null,
       assigneeId: isOwner ? lane?.memberId ?? null : userId,
@@ -428,7 +450,8 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
           startDate,
           dueDate,
           dependsOn: [],
-          category: quickCategory
+          category: quickCategory,
+          isTeam: Boolean(lane?.team)
         }),
       `Đã tạo “${title}”`
     );
@@ -505,7 +528,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     const tip = [
       t.title,
       `${formatFull(t.startDate)} → ${formatFull(t.dueDate)} (${diffDays(t.startDate, t.dueDate) + 1} ngày)`,
-      `Phụ trách: ${memberName(t.assigneeId)}`,
+      t.isTeam ? 'Phụ trách: Cả nhóm' : `Phụ trách: ${memberName(t.assigneeId)}`,
       ms ? `Mốc: ${ms.name}` : '',
       parent ? `Subtask của: ${parent.title}` : '',
       kids.length ? `${kids.length} subtask (${kids.filter((k) => k.status === 'done').length} xong)` : '',
@@ -522,17 +545,22 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
         onPointerMove={opts.ghost ? undefined : (e) => onChipMove(e, t)}
         onPointerUp={opts.ghost ? undefined : () => onChipUp(t)}
         onPointerCancel={() => setDrag(null)}
+        onPointerEnter={opts.ghost ? undefined : () => setHoverId(t.id)}
+        onPointerLeave={opts.ghost ? undefined : () => setHoverId((h) => (h === t.id ? null : h))}
         className={`group absolute touch-none overflow-hidden rounded border text-[12px] leading-tight ${
           isSub ? `${CATEGORY_STYLE[t.category].sub} border-l-[4px] ${CATEGORY_STYLE[t.category].edge}` : CATEGORY_STYLE[t.category].chip
         } ${
           t.status === 'review' ? 'border-2 border-dashed' : ''
         } ${t.status === 'done' ? 'opacity-55' : ''} ${overdue ? 'ring-2 ring-rose-500' : ''} ${opts.ghost ? 'pointer-events-none z-20 shadow-lg ring-2 ring-sky-500' : ''} ${opts.dim ? 'opacity-30' : ''} ${
+          hoverFamily && !opts.ghost ? (hoverFamily.has(t.id) ? 'z-10 shadow-md ring-2 ring-zinc-900' : 'opacity-40') : ''
+        } ${t.isTeam ? 'font-semibold' : ''} ${
           draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
         } ${t.id.startsWith('temp-') ? 'animate-pulse' : ''}`}
         style={{ left: left + 1, top, width: w, height: CHIP_H }}
       >
         <div className="pointer-events-none flex h-full items-center gap-1 px-1.5">
           {isSub && <span className="shrink-0 text-[11px] text-zinc-400">↳</span>}
+          {t.isTeam && <span className="shrink-0 text-[11px]">👥</span>}
           <span className={`truncate ${isSub ? '' : 'font-medium'} ${t.status === 'done' ? 'line-through opacity-60' : ''}`}>{t.title}</span>
           {kids.length > 0 && (
             <span className="ml-auto shrink-0 rounded-sm bg-white/70 px-1 text-[10px] font-semibold text-zinc-600">☰{kids.length}</span>
@@ -607,7 +635,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
       <div className="flex min-h-7 flex-wrap items-center gap-3 text-xs">
         <span className="text-zinc-500">
           {isOwner
-            ? 'Quét chuột trên làn của một người để giao việc · kéo ô để dời · kéo mép để đổi độ dài · kéo sang làn khác để giao lại · kéo ◆ để dời mốc'
+            ? 'Quét trên làn 👥 Cả nhóm để tạo việc chung, hoặc trên làn một người để giao riêng · rê chuột lên việc để xem việc cha & subtask · kéo ô để dời · kéo mép để đổi độ dài · kéo sang làn khác để giao lại · kéo ◆ để dời mốc'
             : role === 'editor'
               ? 'Quét trên làn của bạn để tự tạo việc · kéo việc của bạn để dời / đổi độ dài · bấm ô để xem chi tiết'
               : 'Bấm ô để xem chi tiết công việc'}
@@ -708,9 +736,21 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
               const isTarget = ghostLane?.key === lane.key;
               const creatable = canCreateIn(lane);
               return (
-                <div key={lane.key} className={`absolute flex w-full border-b border-line ${isTarget ? 'bg-sky-50/60' : ''}`} style={{ top: lane.top, height: lane.height }}>
-                  <div className="sticky left-0 z-20 flex flex-col justify-center border-r border-line bg-white px-3" style={{ width: LEFT_W, minWidth: LEFT_W }}>
-                    <p className={`truncate text-[13px] font-medium ${lane.key === 'none' ? 'text-zinc-500' : ''}`}>{lane.label}</p>
+                <div
+                  key={lane.key}
+                  ref={lane.team ? teamRef : undefined}
+                  className={
+                    lane.team
+                      ? `sticky z-[25] flex w-full border-b-2 border-zinc-300 shadow-sm ${isTarget ? 'bg-sky-50' : 'bg-[#f6f8fb]'}`
+                      : `absolute flex w-full border-b border-line ${isTarget ? 'bg-sky-50/60' : ''}`
+                  }
+                  style={lane.team ? { top: SCALE_H + MS_H, height: lane.height } : { top: lane.top, height: lane.height }}
+                >
+                  <div
+                    className={`sticky left-0 z-20 flex flex-col justify-center border-r border-line px-3 ${lane.team ? 'bg-[#f6f8fb]' : 'bg-white'}`}
+                    style={{ width: LEFT_W, minWidth: LEFT_W }}
+                  >
+                    <p className={`truncate text-[13px] font-medium ${lane.key === 'none' ? 'text-zinc-500' : ''} ${lane.team ? 'font-semibold' : ''}`}>{lane.label}</p>
                     <p className="truncate text-[11px] text-zinc-500">
                       {lane.tasks.filter((t) => t.status !== 'done').length} việc đang mở{lane.sub ? ` · ${lane.sub}` : ''}
                     </p>
@@ -724,6 +764,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
                     onPointerUp={() => onLaneUp(lane)}
                     onPointerCancel={() => setDrag(null)}
                   >
+                    {lane.team && <div className="pointer-events-none absolute top-0 bottom-0 w-px bg-rose-500" style={{ left: x(today) + dw / 2 }} />}
                     {creating && (
                       <div
                         className="pointer-events-none absolute z-10 rounded border-2 border-dashed border-sky-600 bg-sky-100/80"
@@ -772,7 +813,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
                           <span className="ml-1 text-[11px] text-zinc-500">{TASK_CATEGORY_LABEL[quickCategory]}</span>
                         </div>
                         <p className="mt-1.5 text-[11px] text-zinc-600">
-                          {formatShort(dayIso(quick.a))} → {formatShort(dayIso(quick.b))} · {quick.b - quick.a + 1} ngày · {lane.memberId ? lane.label.replace(' (bạn)', '') : 'Chưa giao'}
+                          {formatShort(dayIso(quick.a))} → {formatShort(dayIso(quick.b))} · {quick.b - quick.a + 1} ngày · {lane.team ? 'Cả nhóm' : lane.memberId ? lane.label.replace(' (bạn)', '') : 'Chưa giao'}
                           {autoMilestone(dayIso(quick.a)) && <> · mốc “{autoMilestone(dayIso(quick.a))!.name}”</>}
                         </p>
                         <div className="mt-2 flex items-center gap-3 text-xs">
@@ -786,7 +827,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
                                 milestoneId: autoMilestone(dayIso(quick.a))?.id ?? null,
                                 startDate: dayIso(quick.a),
                                 dueDate: dayIso(quick.b),
-                                assigneeId: lane.memberId,
+                                assigneeId: lane.team ? '__team' : lane.memberId,
                                 title: quickTitle,
                                 category: quickCategory
                               });

@@ -17,6 +17,8 @@ import type { FormState } from '@/lib/auth/actions';
 
 const refresh = () => revalidatePath('/', 'layout');
 const NO_ROW = 'Bạn không có quyền sửa công việc này (hoặc nó đã bị xoá).';
+/** Giá trị đặc biệt của ô "Người phụ trách" = giao cho cả nhóm */
+const TEAM = '__team';
 
 export async function createTaskAction(_prev: FormState, fd: FormData): Promise<FormState> {
   const user = await requireUser();
@@ -31,7 +33,10 @@ export async function createTaskAction(_prev: FormState, fd: FormData): Promise<
   if (!isValidISODate(startDate) || !isValidISODate(dueDate)) return { error: 'Ngày không hợp lệ.' };
   if (dueDate < startDate) return { error: 'Hạn chót phải sau hoặc bằng ngày bắt đầu.' };
 
-  const assigneeId = project.role === 'owner' ? str(fd, 'assigneeId') || null : user.id;
+  const rawAssignee = str(fd, 'assigneeId');
+  const parentId = str(fd, 'parentId') || null;
+  const isTeam = project.role === 'owner' && rawAssignee === TEAM && !parentId;
+  const assigneeId = project.role === 'owner' ? (rawAssignee === TEAM ? null : rawAssignee || null) : user.id;
   const supabase = await createClient();
   const { error } = await supabase.from('tasks').insert({
     project_id: projectId,
@@ -42,7 +47,8 @@ export async function createTaskAction(_prev: FormState, fd: FormData): Promise<
     due_date: dueDate,
     depends_on: fd.getAll('dependsOn').map(String).filter(Boolean),
     category: isTaskCategory(str(fd, 'category')) ? str(fd, 'category') : 'task',
-    parent_id: str(fd, 'parentId') || null
+    parent_id: parentId,
+    is_team: isTeam
   });
   if (error) return { error: dbErrorMessage(error, 'Không tạo được công việc.') };
   refresh();
@@ -76,7 +82,8 @@ export async function updateTaskProgressAction(taskId: string, progress: number,
 export async function updateTaskAssigneeAction(taskId: string, assigneeId: string | null): Promise<{ error?: string }> {
   await requireUser();
   const supabase = await createClient();
-  const { data, error } = await supabase.from('tasks').update({ assignee_id: assigneeId }).eq('id', taskId).select('id');
+  const patch = assigneeId === TEAM ? { assignee_id: null, is_team: true } : { assignee_id: assigneeId, is_team: false };
+  const { data, error } = await supabase.from('tasks').update(patch).eq('id', taskId).select('id');
   if (error) return { error: dbErrorMessage(error) };
   if (!data?.length) return { error: NO_ROW };
   refresh();
@@ -102,6 +109,7 @@ export interface TaskPatchInput {
   dependsOn?: string[];
   category?: TaskCategory;
   parentId?: string | null;
+  isTeam?: boolean;
 }
 
 export async function updateTaskAction(taskId: string, patch: TaskPatchInput): Promise<{ error?: string }> {
@@ -116,6 +124,7 @@ export async function updateTaskAction(taskId: string, patch: TaskPatchInput): P
     depends_on?: string[];
     category?: TaskCategory;
     parent_id?: string | null;
+    is_team?: boolean;
   } = {};
   if (patch.title !== undefined) {
     const t = patch.title.trim();
@@ -146,6 +155,10 @@ export async function updateTaskAction(taskId: string, patch: TaskPatchInput): P
     if (patch.parentId === taskId) return { error: 'Công việc không thể là subtask của chính nó.' };
     db.parent_id = patch.parentId || null;
   }
+  if (patch.isTeam !== undefined) {
+    db.is_team = patch.isTeam;
+    if (patch.isTeam) db.assignee_id = null;
+  }
   if (Object.keys(db).length === 0) return {};
 
   const supabase = await createClient();
@@ -158,7 +171,7 @@ export async function updateTaskAction(taskId: string, patch: TaskPatchInput): P
 
 export async function createTaskQuickAction(
   projectId: string,
-  input: { title: string; milestoneId: string | null; assigneeId: string | null; startDate: string; dueDate: string; dependsOn: string[]; category?: TaskCategory; parentId?: string | null }
+  input: { title: string; milestoneId: string | null; assigneeId: string | null; startDate: string; dueDate: string; dependsOn: string[]; category?: TaskCategory; parentId?: string | null; isTeam?: boolean }
 ): Promise<{ error?: string; id?: string }> {
   const user = await requireUser();
   const project = await getProjectForUser(projectId, user.id);
@@ -176,12 +189,13 @@ export async function createTaskQuickAction(
       project_id: projectId,
       milestone_id: input.milestoneId || null,
       title: title.slice(0, 300),
-      assignee_id: project.role === 'owner' ? input.assigneeId || null : user.id,
+      assignee_id: project.role === 'owner' ? (input.isTeam ? null : input.assigneeId || null) : user.id,
       start_date: input.startDate,
       due_date: input.dueDate,
       depends_on: input.dependsOn.filter(Boolean).slice(0, 50),
       category: input.category && isTaskCategory(input.category) ? input.category : 'task',
-      parent_id: input.parentId || null
+      parent_id: input.parentId || null,
+      is_team: project.role === 'owner' && Boolean(input.isTeam) && !input.parentId
     })
     .select('id')
     .single();

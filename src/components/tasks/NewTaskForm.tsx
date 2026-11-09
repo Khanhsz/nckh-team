@@ -111,6 +111,7 @@ export function NewTaskForm({
           {isOwner ? (
             <select name="assigneeId" className={field} defaultValue="">
               <option value="">— Chưa giao —</option>
+              {!parent && <option value="__team">👥 Cả nhóm (chia subtask cho từng người)</option>}
               {members
                 .filter((m) => m.role !== 'viewer')
                 .map((m) => (

@@ -11,6 +11,7 @@ export type DialogState =
   | { mode: 'create'; milestoneId: string | null; startDate: string; dueDate: string; assigneeId?: string | null; title?: string; category?: TaskCategory; parentId?: string | null }
   | { mode: 'edit'; task: Task };
 
+const TEAM = '__team';
 const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-800 disabled:bg-paper-2 disabled:text-zinc-500';
 const label = 'mb-1 block text-xs font-medium text-zinc-700';
 
@@ -45,7 +46,7 @@ export function TaskDialog({
   const [title, setTitle] = useState(editing?.title ?? (state.mode === 'create' ? state.title ?? '' : ''));
   const [milestoneId, setMilestoneId] = useState<string>(editing ? editing.milestoneId ?? '' : state.mode === 'create' ? state.milestoneId ?? '' : '');
   const [assigneeId, setAssigneeId] = useState<string>(
-    editing ? editing.assigneeId ?? '' : !isOwner ? userId : state.mode === 'create' && state.assigneeId ? state.assigneeId : ''
+    editing ? (editing.isTeam ? TEAM : editing.assigneeId ?? '') : !isOwner ? userId : state.mode === 'create' && state.assigneeId ? state.assigneeId : ''
   );
   const [startDate, setStartDate] = useState(editing?.startDate ?? (state.mode === 'create' ? state.startDate : ''));
   const [dueDate, setDueDate] = useState(editing?.dueDate ?? (state.mode === 'create' ? state.dueDate : ''));
@@ -83,7 +84,12 @@ export function TaskDialog({
         const patch: Parameters<typeof updateTaskAction>[1] = {};
         if (title !== editing.title) patch.title = title;
         if ((milestoneId || null) !== editing.milestoneId) patch.milestoneId = milestoneId || null;
-        if (isOwner && (assigneeId || null) !== editing.assigneeId) patch.assigneeId = assigneeId || null;
+        if (isOwner) {
+          const wantTeam = assigneeId === TEAM && !parentId;
+          if (wantTeam !== editing.isTeam) patch.isTeam = wantTeam;
+          const wantAssignee = assigneeId === TEAM ? null : assigneeId || null;
+          if (!wantTeam && wantAssignee !== editing.assigneeId) patch.assigneeId = wantAssignee;
+        }
         if (startDate !== editing.startDate) patch.startDate = startDate;
         if (dueDate !== editing.dueDate) patch.dueDate = dueDate;
         if (status !== editing.status) patch.status = status;
@@ -97,7 +103,8 @@ export function TaskDialog({
         const r = await createTaskQuickAction(projectId, {
           title,
           milestoneId: milestoneId || null,
-          assigneeId: assigneeId || null,
+          assigneeId: assigneeId === TEAM ? null : assigneeId || null,
+          isTeam: assigneeId === TEAM && !parentId,
           startDate,
           dueDate,
           dependsOn,
@@ -147,7 +154,11 @@ export function TaskDialog({
           {(parentCandidates.length > 0 || parentId) && (
             <div>
               <label className={label}>Thuộc công việc (để biến thành subtask)</label>
-              <select value={parentId} onChange={(e) => setParentId(e.target.value)} disabled={!canEdit} className={field}>
+              <select value={parentId} onChange={(e) => {
+                  setParentId(e.target.value);
+                  if (e.target.value && assigneeId === TEAM) setAssigneeId('');
+                }}
+                disabled={!canEdit} className={field}>
                 <option value="">— Không, đây là công việc chính —</option>
                 {parentCandidates.map((t) => (
                   <option key={t.id} value={t.id}>
@@ -196,6 +207,7 @@ export function TaskDialog({
               <label className={label}>Người phụ trách</label>
               <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} disabled={!isOwner} className={field}>
                 <option value="">— Chưa giao —</option>
+                {!parentId && <option value={TEAM}>👥 Cả nhóm</option>}
                 {assignable.map((m) => (
                   <option key={m.userId} value={m.userId}>
                     {m.displayName}
@@ -287,7 +299,7 @@ export function TaskDialog({
                       milestoneId: editing.milestoneId,
                       startDate: editing.startDate,
                       dueDate: editing.dueDate,
-                      assigneeId: editing.assigneeId,
+                      assigneeId: editing.isTeam ? null : editing.assigneeId,
                       category: editing.category
                     })
                   }

@@ -84,7 +84,8 @@ export function ProgressInput({ taskId, value, status, disabled }: { taskId: str
   );
 }
 
-export function AssigneeSelect({ taskId, value, members }: { taskId: string; value: string | null; members: Member[] }) {
+/** value = '__team' nghĩa là việc của cả nhóm; allowTeam = false cho subtask */
+export function AssigneeSelect({ taskId, value, members, allowTeam = true }: { taskId: string; value: string | null; members: Member[]; allowTeam?: boolean }) {
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
   return (
@@ -108,6 +109,7 @@ export function AssigneeSelect({ taskId, value, members }: { taskId: string; val
         className="max-w-40 border border-line bg-white px-1.5 py-1 text-xs"
       >
         <option value="">— Chưa giao —</option>
+        {allowTeam && <option value="__team">👥 Cả nhóm</option>}
         {members
           .filter((m) => m.role !== 'viewer')
           .map((m) => (

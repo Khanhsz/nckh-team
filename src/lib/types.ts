@@ -55,6 +55,8 @@ export interface Task {
   milestoneId: string | null;
   /** Việc cha (null = công việc chính). Chỉ 1 cấp. */
   parentId: string | null;
+  /** Việc chung của cả nhóm (không có người phụ trách riêng; chia subtask cho từng người) */
+  isTeam: boolean;
   title: string;
   description: string | null;
   assigneeId: string | null;

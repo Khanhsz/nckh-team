@@ -102,6 +102,7 @@ export default async function TasksPage({
                       title={`${isSub ? 'Subtask · ' : ''}${TASK_CATEGORY_LABEL[t.category]}`}
                     >
                       {isSub ? <SubtaskMark category={t.category} /> : <CategoryDot category={t.category} />}
+                      {t.isTeam && <span title="Việc của cả nhóm">👥</span>}
                       {t.title}
                     </p>
                     {orphan && t.parentId && <p className="mt-0.5 text-[11px] text-zinc-500">Subtask của: {taskById.get(t.parentId)?.title ?? '—'}</p>}
@@ -120,7 +121,9 @@ export default async function TasksPage({
                   <td className="px-3 py-2.5 text-xs text-zinc-600">{t.milestoneId ? milestoneById.get(t.milestoneId)?.name : '—'}</td>
                   <td className="px-3 py-2.5">
                     {manage ? (
-                      <AssigneeSelect taskId={t.id} value={t.assigneeId} members={members} />
+                      <AssigneeSelect taskId={t.id} value={t.isTeam ? '__team' : t.assigneeId} members={members} allowTeam={!t.parentId} />
+                    ) : t.isTeam ? (
+                      <span className="text-xs font-medium">👥 Cả nhóm</span>
                     ) : assignee ? (
                       <span className="flex items-center gap-1.5 text-xs">
                         <Avatar name={assignee.displayName} email={assignee.email ?? ''} size={20} />
