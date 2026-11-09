@@ -3,7 +3,7 @@ import { NextResponse, type NextRequest } from 'next/server';
 import type { Database } from './database.types';
 import { supabaseEnv } from './env';
 
-const PUBLIC_PREFIXES = ['/login', '/signup', '/forgot-password', '/auth', '/invite'];
+const PUBLIC_PREFIXES = ['/login', '/signup', '/forgot-password', '/auth', '/invite', '/api/cron'];
 const GUEST_ONLY = ['/login', '/signup', '/forgot-password'];
 
 const matches = (path: string, prefixes: string[]) => prefixes.some((p) => path === p || path.startsWith(p + '/'));

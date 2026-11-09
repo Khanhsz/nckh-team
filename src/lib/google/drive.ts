@@ -48,7 +48,8 @@ async function accessToken(): Promise<string> {
   const b64 = (v: object) => Buffer.from(JSON.stringify(v)).toString('base64url');
   const unsigned = `${b64({ alg: 'RS256', typ: 'JWT' })}.${b64({
     iss: key.client_email,
-    scope: 'https://www.googleapis.com/auth/drive.readonly',
+    // drive.readonly: đọc thư viện · drive.file: tạo working file (Google Docs) do chính bot tạo
+    scope: 'https://www.googleapis.com/auth/drive.readonly https://www.googleapis.com/auth/drive.file',
     aud: 'https://oauth2.googleapis.com/token',
     iat: now,
     exp: now + 3600
@@ -171,4 +172,57 @@ export async function downloadPdf(fileId: string, maxBytes: number): Promise<Buf
   const buf = Buffer.from(await res.arrayBuffer());
   if (buf.length > maxBytes) throw tooLarge();
   return buf;
+}
+
+/* ---------------- Google Docs (bài viết) ---------------- */
+
+export interface DriveDocMeta {
+  id: string;
+  name: string;
+  modifiedTime: string;
+  webViewLink: string | null;
+  lastModifiedBy: string | null;
+}
+
+/** Nhận link Google Docs (…/document/d/<id>/…) → ID. */
+export function parseDocId(input: string): string | null {
+  const m = input.trim().match(/\/document\/d\/([A-Za-z0-9_-]{10,100})/);
+  if (m) return m[1];
+  return ID_RE.test(input.trim()) ? input.trim() : null;
+}
+
+export async function getDocMeta(docId: string): Promise<DriveDocMeta> {
+  if (!ID_RE.test(docId)) throw new DriveError('not_found', 'ID tài liệu không hợp lệ.');
+  const res = await driveGet(`files/${docId}`, { fields: 'id,name,mimeType,modifiedTime,webViewLink,trashed,lastModifyingUser(displayName)' });
+  const j = (await res.json()) as {
+    id: string; name: string; mimeType: string; modifiedTime: string; webViewLink?: string; trashed?: boolean;
+    lastModifyingUser?: { displayName?: string };
+  };
+  if (j.mimeType !== 'application/vnd.google-apps.document') throw new DriveError('not_doc', 'Link này không phải Google Docs.');
+  if (j.trashed) throw new DriveError('not_found', 'Tài liệu đã bị chuyển vào thùng rác trên Drive.');
+  return { id: j.id, name: j.name, modifiedTime: j.modifiedTime, webViewLink: j.webViewLink ?? null, lastModifiedBy: j.lastModifyingUser?.displayName ?? null };
+}
+
+/** Tạo Google Doc mới trong thư mục (Shared Drive) từ nội dung HTML — Drive tự chuyển thành Docs có tiêu đề, bảng. */
+export async function createDocFromHtml(folderId: string, name: string, html: string): Promise<{ id: string; webViewLink: string | null }> {
+  if (!ID_RE.test(folderId)) throw new DriveError('not_found', 'ID thư mục không hợp lệ.');
+  const token = await accessToken();
+  const boundary = `nckh${Date.now().toString(36)}`;
+  const metadata = { name, mimeType: 'application/vnd.google-apps.document', parents: [folderId] };
+  const body =
+    `--${boundary}\r\nContent-Type: application/json; charset=UTF-8\r\n\r\n${JSON.stringify(metadata)}\r\n` +
+    `--${boundary}\r\nContent-Type: text/html; charset=UTF-8\r\n\r\n${html}\r\n--${boundary}--`;
+  const res = await fetch(
+    'https://www.googleapis.com/upload/drive/v3/files?uploadType=multipart&supportsAllDrives=true&fields=id,webViewLink',
+    { method: 'POST', headers: { authorization: `Bearer ${token}`, 'content-type': `multipart/related; boundary=${boundary}` }, body, cache: 'no-store' }
+  );
+  if (res.status === 403 || res.status === 404) {
+    throw new DriveError(
+      'forbidden',
+      'Bot chưa có quyền tạo file trong thư mục này. Trong Shared Drive, nâng quyền của email bot lên "Người đóng góp" (Contributor) hoặc "Quản lý nội dung".'
+    );
+  }
+  if (!res.ok) throw new DriveError('http', `Google Drive trả lỗi ${res.status} khi tạo tài liệu.`);
+  const j = (await res.json()) as { id: string; webViewLink?: string };
+  return { id: j.id, webViewLink: j.webViewLink ?? null };
 }

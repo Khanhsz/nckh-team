@@ -81,21 +81,32 @@ export type Database = {
           { foreignKeyName: 'project_members_project_id_fkey'; columns: ['project_id']; isOneToOne: false; referencedRelation: 'projects'; referencedColumns: ['id'] }
         ];
       };
+      project_documents: {
+        Row: { id: string; project_id: string; drive_file_id: string; title: string; kind: string; created_by: string; created_at: string };
+        Insert: { id?: string; project_id: string; drive_file_id: string; title: string; kind?: string; created_by?: string; created_at?: string };
+        Update: { id?: string; project_id?: string; drive_file_id?: string; title?: string; kind?: string; created_by?: string; created_at?: string };
+        Relationships: [
+          { foreignKeyName: 'project_documents_project_id_fkey'; columns: ['project_id']; isOneToOne: false; referencedRelation: 'projects'; referencedColumns: ['id'] }
+        ];
+      };
       projects: {
         Row: {
           code: string | null; created_at: string; end_date: string; id: string; name: string; owner_id: string; research_model: string;
           research_topic: string; start_date: string; synthesis: string; synthesis_updated_at: string | null; updated_at: string;
           drive_folder_id: string | null; drive_folder_name: string | null; drive_synced_at: string | null;
+          writing_folder_id: string | null; writing_folder_name: string | null;
         };
         Insert: {
           code?: string | null; created_at?: string; end_date?: string; id?: string; name: string; owner_id: string; research_model?: string;
           research_topic?: string; start_date?: string; synthesis?: string; synthesis_updated_at?: string | null; updated_at?: string;
           drive_folder_id?: string | null; drive_folder_name?: string | null; drive_synced_at?: string | null;
+          writing_folder_id?: string | null; writing_folder_name?: string | null;
         };
         Update: {
           code?: string | null; created_at?: string; end_date?: string; id?: string; name?: string; owner_id?: string; research_model?: string;
           research_topic?: string; start_date?: string; synthesis?: string; synthesis_updated_at?: string | null; updated_at?: string;
           drive_folder_id?: string | null; drive_folder_name?: string | null; drive_synced_at?: string | null;
+          writing_folder_id?: string | null; writing_folder_name?: string | null;
         };
         Relationships: [];
       };
@@ -124,6 +135,8 @@ export type Database = {
     Views: { [_ in never]: never };
     Functions: {
       accept_project_invite: { Args: { p_token: string }; Returns: string };
+      cron_drive_projects: { Args: { p_secret: string }; Returns: { project_id: string; folder_id: string }[] };
+      cron_apply_drive_listing: { Args: { p_secret: string; p_project_id: string; p_files: Json }; Returns: Json };
       mark_drive_synced: { Args: { p_project_id: string }; Returns: undefined };
       consume_ai_quota: { Args: { p_action: string; p_project_id: string }; Returns: boolean };
       create_project_invite: { Args: { p_project_id: string; p_role?: string }; Returns: string };

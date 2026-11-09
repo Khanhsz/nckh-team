@@ -7,7 +7,7 @@ import { geminiConfigured, geminiModel } from '@/lib/ai/extract';
 import { PAPER_FIELDS, VIEW_PRESETS } from '@/lib/ai/fields';
 import { PAPER_STATUS_LABEL, type PaperStatus } from '@/lib/types';
 import { AcademicText } from '@/components/library/AcademicText';
-import { ConnectFolderForm, ExtractQueue, SyncButton } from '@/components/library/LibraryControls';
+import { AutoRefresh, ConnectFolderForm, ExtractQueue, SyncButton } from '@/components/library/LibraryControls';
 import { disconnectDriveFolderAction } from './actions';
 
 export const maxDuration = 300; // trích xuất một bài có thể mất 30–90 giây
@@ -49,6 +49,7 @@ export default async function LibraryPage({
 
   return (
     <div className="space-y-4 p-8">
+      {project.driveFolderId && <AutoRefresh seconds={60} />}
       {/* ---------- Kết nối Drive ---------- */}
       <section className="space-y-3 border border-line bg-white p-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -106,7 +107,7 @@ export default async function LibraryPage({
             <SyncButton projectId={id} />
             {aiReady && <ExtractQueue paperIds={toExtract} label="Trích xuất bài chưa xử lý" />}
             <span className="ml-auto text-xs text-zinc-500">
-              {done}/{papers.length} bài đã trích xuất · model {geminiModel()} · 25 lượt/người/ngày
+              {done}/{papers.length} bài đã trích xuất · model {geminiModel()} · tự đồng bộ mỗi 5 phút
             </span>
           </div>
         )}

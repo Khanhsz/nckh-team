@@ -1,7 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { createClient } from '../supabase/server';
-import type { Member, Milestone, Paper, ProjectWithRole, Task } from '../types';
+import type { Member, Milestone, Paper, ProjectDocument, ProjectWithRole, Task } from '../types';
 import { asRole, mapMilestone, mapPaper, mapProject, mapTask } from './mappers';
 
 /**
@@ -105,3 +105,18 @@ export async function countMyProjects(userId: string): Promise<number> {
   const { count } = await sb.from('project_members').select('project_id', { count: 'exact', head: true }).eq('user_id', userId);
   return count ?? 0;
 }
+
+export const listDocuments = cache(async (projectId: string): Promise<ProjectDocument[]> => {
+  const sb = await createClient();
+  const { data, error } = await sb.from('project_documents').select('*').eq('project_id', projectId).order('created_at', { ascending: false });
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    projectId: r.project_id,
+    driveFileId: r.drive_file_id,
+    title: r.title,
+    kind: (['working', 'proposal', 'review', 'other'].includes(r.kind) ? r.kind : 'other') as ProjectDocument['kind'],
+    createdBy: r.created_by,
+    createdAt: r.created_at
+  }));
+});

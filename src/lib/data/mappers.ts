@@ -23,7 +23,9 @@ export const mapProject = (r: T['projects']['Row']): Project => ({
   endDate: r.end_date,
   driveFolderId: r.drive_folder_id,
   driveFolderName: r.drive_folder_name,
-  driveSyncedAt: r.drive_synced_at
+  driveSyncedAt: r.drive_synced_at,
+  writingFolderId: r.writing_folder_id,
+  writingFolderName: r.writing_folder_name
 });
 
 export const mapMilestone = (r: T['milestones']['Row']): Milestone => ({

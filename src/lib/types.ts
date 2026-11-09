@@ -24,6 +24,8 @@ export interface Project {
   driveFolderId: string | null;
   driveFolderName: string | null;
   driveSyncedAt: string | null;
+  writingFolderId: string | null;
+  writingFolderName: string | null;
 }
 
 export interface ProjectWithRole extends Project {
@@ -108,3 +110,13 @@ export const ROLE_LABEL: Record<ProjectRole, string> = {
 };
 
 export const projectLabel = (p: Pick<Project, 'code' | 'name'>) => p.code || p.name.slice(0, 12);
+
+export interface ProjectDocument {
+  id: string;
+  projectId: string;
+  driveFileId: string;
+  title: string;
+  kind: 'working' | 'proposal' | 'review' | 'other';
+  createdBy: string;
+  createdAt: string;
+}

@@ -1,6 +1,6 @@
 'use client';
 
-import { useActionState, useRef, useState, useTransition } from 'react';
+import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { FormState } from '@/lib/auth/actions';
 import { connectDriveFolderAction, extractPaperAction, syncDriveAction } from '@/app/(app)/projects/[id]/library/actions';
@@ -108,4 +108,16 @@ export function ExtractQueue({ paperIds, label }: { paperIds: string[]; label: s
       {errors.length > 0 && <span className="text-xs text-rose-700">{errors[errors.length - 1]}</span>}
     </div>
   );
+}
+
+/** Làm mới dữ liệu định kỳ khi tab đang mở (bài mới do bộ đồng bộ 5 phút đưa vào sẽ hiện ra). */
+export function AutoRefresh({ seconds }: { seconds: number }) {
+  const router = useRouter();
+  useEffect(() => {
+    const id = setInterval(() => {
+      if (document.visibilityState === 'visible') router.refresh();
+    }, seconds * 1000);
+    return () => clearInterval(id);
+  }, [router, seconds]);
+  return null;
 }

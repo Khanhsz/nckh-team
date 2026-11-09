@@ -95,7 +95,7 @@ export async function syncDriveAction(projectId: string): Promise<SyncResult> {
     .filter((f) => !byDriveId.has(f.id))
     .map((f) => ({
       project_id: projectId,
-      file_name: (f.folderPath ? `${f.folderPath}/${f.name}` : f.name).slice(0, 400),
+      file_name: f.name.slice(0, 400),
       status: 'pending',
       created_by: user.id,
       drive_file_id: f.id,
@@ -114,8 +114,9 @@ export async function syncDriveAction(projectId: string): Promise<SyncResult> {
   for (const f of files) {
     const old = byDriveId.get(f.id);
     if (!old || !old.drive_modified_time || new Date(f.modifiedTime) <= new Date(old.drive_modified_time)) continue;
-    const patch: { drive_modified_time: string; drive_web_link: string | null; file_size: number | null; status?: string } = {
+    const patch: { drive_modified_time: string; drive_web_link: string | null; file_size: number | null; file_name: string; status?: string } = {
       drive_modified_time: f.modifiedTime,
+      file_name: f.name.slice(0, 400),
       drive_web_link: f.webViewLink,
       file_size: f.size
     };
@@ -139,10 +140,6 @@ export async function extractPaperAction(paperId: string): Promise<{ error?: str
   if (!paper.driveFileId) return { error: 'Bài này không có file trên Drive.' };
 
   const supabase = await createClient();
-  const { data: allowed, error: qErr } = await supabase.rpc('consume_ai_quota', { p_project_id: project.id, p_action: 'extract' });
-  if (qErr) return { error: dbErrorMessage(qErr), stop: true };
-  if (!allowed) return { error: 'Bạn đã dùng hết 25 lượt trích xuất hôm nay. Lượt mới sẽ có vào 7 giờ sáng mai.', stop: true };
-
   await supabase.from('papers').update({ status: 'processing', error: null }).eq('id', paperId);
 
   try {
