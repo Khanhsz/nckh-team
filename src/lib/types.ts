@@ -53,6 +53,8 @@ export interface Task {
   id: string;
   projectId: string;
   milestoneId: string | null;
+  /** Việc cha (null = công việc chính). Chỉ 1 cấp. */
+  parentId: string | null;
   title: string;
   description: string | null;
   assigneeId: string | null;

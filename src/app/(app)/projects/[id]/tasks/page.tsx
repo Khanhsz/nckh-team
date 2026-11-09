@@ -3,7 +3,7 @@ import { requireUser } from '@/lib/auth/session';
 import { getProjectForUser, listMembers, listMilestones, listTasks } from '@/lib/data/queries';
 import { canCreateTask, canManage, canUpdateTask } from '@/lib/data/permissions';
 import { addDays, dueLabel, formatShort, todayISO } from '@/lib/dates';
-import { Avatar, CategoryDot } from '@/components/ui/badges';
+import { Avatar, CategoryDot, SubtaskMark } from '@/components/ui/badges';
 import { TASK_CATEGORY_LABEL } from '@/lib/types';
 import { NewTaskForm } from '@/components/tasks/NewTaskForm';
 import { AssigneeSelect, ProgressInput, StatusSelect } from '@/components/tasks/TaskControls';
@@ -14,10 +14,10 @@ export default async function TasksPage({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ mine?: string }>;
+  searchParams: Promise<{ mine?: string; sub?: string }>;
 }) {
   const { id } = await params;
-  const { mine } = await searchParams;
+  const { mine, sub } = await searchParams;
   const user = await requireUser();
   const project = await getProjectForUser(id, user.id);
   if (!project) notFound();
@@ -29,6 +29,19 @@ export default async function TasksPage({
   const manage = canManage(project.role);
   const myCount = tasks.filter((t) => t.assigneeId === user.id).length;
   const visible = mine ? tasks.filter((t) => t.assigneeId === user.id) : tasks;
+  const taskById = new Map(tasks.map((t) => [t.id, t]));
+
+  // Gom subtask ngay dưới việc cha (1 cấp). Subtask có cha bị lọc mất thì hiện riêng kèm tên cha.
+  const allChildren = new Map<string, typeof tasks>();
+  for (const t of tasks) if (t.parentId) allChildren.set(t.parentId, [...(allChildren.get(t.parentId) ?? []), t]);
+  const visibleIds = new Set(visible.map((t) => t.id));
+  const rows: { t: (typeof tasks)[number]; sub: boolean; orphan: boolean }[] = [];
+  for (const t of visible) {
+    if (t.parentId && visibleIds.has(t.parentId)) continue;
+    rows.push({ t, sub: Boolean(t.parentId), orphan: Boolean(t.parentId) });
+    for (const c of allChildren.get(t.id) ?? []) if (visibleIds.has(c.id)) rows.push({ t: c, sub: true, orphan: false });
+  }
+  const subHref = (taskId: string) => `?${mine ? 'mine=1&' : ''}sub=${taskId}#new-task`;
 
   return (
     <div className="space-y-4 p-8">
@@ -43,6 +56,8 @@ export default async function TasksPage({
             currentUserId={user.id}
             defaultStart={today}
             defaultDue={addDays(today, 7)}
+            initialParentId={sub}
+            key={sub ?? 'new'}
           />
         ) : (
           <p className="text-sm text-zinc-500">Bạn đang ở chế độ chỉ xem.</p>
@@ -71,19 +86,36 @@ export default async function TasksPage({
             </tr>
           </thead>
           <tbody className="divide-y divide-line">
-            {visible.map((t) => {
+            {rows.map(({ t, sub: isSub, orphan }) => {
+              const kids = allChildren.get(t.id) ?? [];
+              const kidsDone = kids.filter((k) => k.status === 'done').length;
+              const kidsAvg = kids.length ? Math.round(kids.reduce((s, k) => s + k.progress, 0) / kids.length) : 0;
               const assignee = t.assigneeId ? memberById.get(t.assigneeId) : undefined;
               const overdue = t.status !== 'done' && t.dueDate < today;
               const edit = canUpdateTask(project.role, user.id, t);
               const deps = t.dependsOn.map((d) => tasks.find((x) => x.id === d)?.title).filter(Boolean);
               return (
-                <tr key={t.id} className="align-top hover:bg-paper/60">
-                  <td className="max-w-sm px-3 py-2.5">
-                    <p className={`flex items-center gap-2 font-medium ${t.status === 'done' ? 'text-zinc-400 line-through' : ''}`} title={TASK_CATEGORY_LABEL[t.category]}>
-                      <CategoryDot category={t.category} />
+                <tr key={t.id} className={`align-top hover:bg-paper/60 ${isSub && !orphan ? 'bg-paper/30' : ''}`}>
+                  <td className={`max-w-sm py-2.5 pr-3 ${isSub && !orphan ? 'pl-8' : 'pl-3'}`}>
+                    <p
+                      className={`flex items-center gap-2 ${isSub ? 'text-[13px]' : 'font-medium'} ${t.status === 'done' ? 'text-zinc-400 line-through' : ''}`}
+                      title={`${isSub ? 'Subtask · ' : ''}${TASK_CATEGORY_LABEL[t.category]}`}
+                    >
+                      {isSub ? <SubtaskMark category={t.category} /> : <CategoryDot category={t.category} />}
                       {t.title}
                     </p>
+                    {orphan && t.parentId && <p className="mt-0.5 text-[11px] text-zinc-500">Subtask của: {taskById.get(t.parentId)?.title ?? '—'}</p>}
+                    {kids.length > 0 && (
+                      <p className="mt-0.5 text-[11px] text-zinc-500" title="Tiến độ trung bình các subtask">
+                        ☰ {kidsDone}/{kids.length} subtask xong · TB {kidsAvg}%
+                      </p>
+                    )}
                     {deps.length > 0 && <p className="mt-0.5 text-[11px] text-zinc-500">Sau: {deps.join('; ')}</p>}
+                    {!isSub && canCreateTask(project.role) && (
+                      <a href={subHref(t.id)} className="mt-0.5 inline-block text-[11px] text-zinc-400 hover:text-zinc-900 hover:underline">
+                        + Subtask
+                      </a>
+                    )}
                   </td>
                   <td className="px-3 py-2.5 text-xs text-zinc-600">{t.milestoneId ? milestoneById.get(t.milestoneId)?.name : '—'}</td>
                   <td className="px-3 py-2.5">
@@ -114,7 +146,7 @@ export default async function TasksPage({
                     <td className="px-3 py-2.5 text-right">
                       <form action={deleteTaskAction}>
                         <input type="hidden" name="taskId" value={t.id} />
-                        <button className="text-xs text-zinc-400 hover:text-rose-700" title="Xoá công việc">
+                        <button className="text-xs text-zinc-400 hover:text-rose-700" title={kids.length ? `Xoá công việc và ${kids.length} subtask` : 'Xoá công việc'}>
                           Xoá
                         </button>
                       </form>
@@ -123,7 +155,7 @@ export default async function TasksPage({
                 </tr>
               );
             })}
-            {visible.length === 0 && (
+            {rows.length === 0 && (
               <tr>
                 <td colSpan={7} className="px-3 py-8 text-center text-sm text-zinc-500">
                   Chưa có công việc nào.

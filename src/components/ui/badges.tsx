@@ -44,13 +44,23 @@ export function Avatar({ name, email, size = 24 }: { name: string; email: string
 }
 
 /** Màu theo loại công việc — chỉ hiển thị màu, không ghi chữ trên ô việc. */
-export const CATEGORY_STYLE: Record<TaskCategory, { chip: string; fill: string; dot: string }> = {
-  task: { chip: 'bg-sky-100 border-sky-300 text-sky-950', fill: 'bg-sky-600', dot: 'bg-sky-500' },
-  meeting: { chip: 'bg-violet-100 border-violet-300 text-violet-950', fill: 'bg-violet-600', dot: 'bg-violet-500' },
-  data: { chip: 'bg-emerald-100 border-emerald-300 text-emerald-950', fill: 'bg-emerald-600', dot: 'bg-emerald-500' },
-  survey: { chip: 'bg-amber-100 border-amber-300 text-amber-950', fill: 'bg-amber-500', dot: 'bg-amber-500' }
+export const CATEGORY_STYLE: Record<TaskCategory, { chip: string; fill: string; dot: string; sub: string; edge: string }> = {
+  task: { chip: 'bg-sky-100 border-sky-300 text-sky-950', fill: 'bg-sky-600', dot: 'bg-sky-500', sub: 'bg-white border-sky-400 text-sky-950', edge: 'border-sky-500' },
+  meeting: { chip: 'bg-violet-100 border-violet-300 text-violet-950', fill: 'bg-violet-600', dot: 'bg-violet-500', sub: 'bg-white border-violet-400 text-violet-950', edge: 'border-violet-500' },
+  data: { chip: 'bg-emerald-100 border-emerald-300 text-emerald-950', fill: 'bg-emerald-600', dot: 'bg-emerald-500', sub: 'bg-white border-emerald-400 text-emerald-950', edge: 'border-emerald-500' },
+  survey: { chip: 'bg-amber-100 border-amber-300 text-amber-950', fill: 'bg-amber-500', dot: 'bg-amber-500', sub: 'bg-white border-amber-400 text-amber-950', edge: 'border-amber-500' }
 };
 
 export function CategoryDot({ category, size = 8 }: { category: TaskCategory; size?: number }) {
   return <span aria-hidden className={`inline-block shrink-0 rounded-full ${CATEGORY_STYLE[category].dot}`} style={{ width: size, height: size }} />;
+}
+
+/** Ký hiệu subtask: ↳ + chấm rỗng viền theo màu loại (khác chấm đặc của việc chính). */
+export function SubtaskMark({ category, size = 8 }: { category: TaskCategory; size?: number }) {
+  return (
+    <span aria-hidden className="inline-flex shrink-0 items-center gap-0.5 text-zinc-400">
+      <span className="text-[11px] leading-none">↳</span>
+      <span className={`inline-block rounded-full border-2 bg-white ${CATEGORY_STYLE[category].edge}`} style={{ width: size, height: size }} />
+    </span>
+  );
 }

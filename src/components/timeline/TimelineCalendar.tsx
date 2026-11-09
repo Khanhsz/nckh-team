@@ -403,6 +403,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
       id: tempId,
       projectId: project.id,
       milestoneId: ms?.id ?? null,
+      parentId: null,
       title,
       description: null,
       assigneeId: isOwner ? lane?.memberId ?? null : userId,
@@ -498,11 +499,16 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     const overdue = t.status !== 'done' && t.dueDate < today;
     const draggable = canDragTask(t) && !t.id.startsWith('temp-');
     const ms = t.milestoneId ? milestones.find((m) => m.id === t.milestoneId) : null;
+    const parent = t.parentId ? tasks.find((x) => x.id === t.parentId) : undefined;
+    const isSub = Boolean(t.parentId);
+    const kids = isSub ? [] : tasks.filter((x) => x.parentId === t.id);
     const tip = [
       t.title,
       `${formatFull(t.startDate)} → ${formatFull(t.dueDate)} (${diffDays(t.startDate, t.dueDate) + 1} ngày)`,
       `Phụ trách: ${memberName(t.assigneeId)}`,
       ms ? `Mốc: ${ms.name}` : '',
+      parent ? `Subtask của: ${parent.title}` : '',
+      kids.length ? `${kids.length} subtask (${kids.filter((k) => k.status === 'done').length} xong)` : '',
       `${TASK_CATEGORY_LABEL[t.category]} · ${TASK_STATUS_LABEL[t.status]} · ${t.progress}%`
     ]
       .filter(Boolean)
@@ -516,7 +522,9 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
         onPointerMove={opts.ghost ? undefined : (e) => onChipMove(e, t)}
         onPointerUp={opts.ghost ? undefined : () => onChipUp(t)}
         onPointerCancel={() => setDrag(null)}
-        className={`group absolute touch-none overflow-hidden rounded border text-[12px] leading-tight ${CATEGORY_STYLE[t.category].chip} ${
+        className={`group absolute touch-none overflow-hidden rounded border text-[12px] leading-tight ${
+          isSub ? `${CATEGORY_STYLE[t.category].sub} border-l-[4px] ${CATEGORY_STYLE[t.category].edge}` : CATEGORY_STYLE[t.category].chip
+        } ${
           t.status === 'review' ? 'border-2 border-dashed' : ''
         } ${t.status === 'done' ? 'opacity-55' : ''} ${overdue ? 'ring-2 ring-rose-500' : ''} ${opts.ghost ? 'pointer-events-none z-20 shadow-lg ring-2 ring-sky-500' : ''} ${opts.dim ? 'opacity-30' : ''} ${
           draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
@@ -524,7 +532,11 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
         style={{ left: left + 1, top, width: w, height: CHIP_H }}
       >
         <div className="pointer-events-none flex h-full items-center gap-1 px-1.5">
-          <span className={`truncate font-medium ${t.status === 'done' ? 'line-through opacity-60' : ''}`}>{t.title}</span>
+          {isSub && <span className="shrink-0 text-[11px] text-zinc-400">↳</span>}
+          <span className={`truncate ${isSub ? '' : 'font-medium'} ${t.status === 'done' ? 'line-through opacity-60' : ''}`}>{t.title}</span>
+          {kids.length > 0 && (
+            <span className="ml-auto shrink-0 rounded-sm bg-white/70 px-1 text-[10px] font-semibold text-zinc-600">☰{kids.length}</span>
+          )}
         </div>
         <div className={`pointer-events-none absolute bottom-0 left-0 h-[3px] ${CATEGORY_STYLE[t.category].fill}`} style={{ width: `${t.progress}%` }} />
         {draggable && (
@@ -585,6 +597,10 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
           <span className="flex items-center gap-1 border-l border-line pl-3">
             <span className="inline-block h-2.5 w-3.5 rounded-sm border-2 border-dashed border-zinc-500" />
             Chờ duyệt
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="inline-flex h-3 w-5 items-center rounded-sm border border-l-[3px] border-zinc-400 border-l-zinc-600 bg-white text-[8px] leading-none text-zinc-500">↳</span>
+            Subtask
           </span>
         </span>
       </div>
@@ -803,7 +819,9 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
           members={members}
           milestones={milestones}
           tasks={tasks.filter((t) => !t.id.startsWith('temp-'))}
+          key={dialog.mode === 'edit' ? dialog.task.id : `new-${dialog.parentId ?? ''}`}
           onClose={() => setDialog(null)}
+          onOpen={setDialog}
           onSaved={(text) => {
             setDialog(null);
             setFlash({ type: 'ok', text });

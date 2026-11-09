@@ -17,7 +17,8 @@ export function NewTaskForm({
   isOwner,
   currentUserId,
   defaultStart,
-  defaultDue
+  defaultDue,
+  initialParentId
 }: {
   projectId: string;
   milestones: Milestone[];
@@ -27,8 +28,16 @@ export function NewTaskForm({
   currentUserId: string;
   defaultStart: string;
   defaultDue: string;
+  /** Mở sẵn form để thêm subtask cho việc này */
+  initialParentId?: string;
 }) {
-  const [open, setOpen] = useState(false);
+  const parents = tasks.filter((t) => !t.parentId);
+  const initialParent = parents.find((t) => t.id === initialParentId);
+  const [open, setOpen] = useState(Boolean(initialParent));
+  const [parentId, setParentId] = useState(initialParent?.id ?? '');
+  const [startDate, setStartDate] = useState(initialParent?.startDate ?? defaultStart);
+  const [dueDate, setDueDate] = useState(initialParent?.dueDate ?? defaultDue);
+  const parent = parents.find((t) => t.id === parentId);
   const [state, action] = useActionState<FormState, FormData>(createTaskAction, {});
   const formRef = useRef<HTMLFormElement>(null);
 
@@ -39,14 +48,38 @@ export function NewTaskForm({
   if (!open) {
     return (
       <button onClick={() => setOpen(true)} className="bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700">
-        + Thêm công việc
+        + Thêm công việc / subtask
       </button>
     );
   }
 
   return (
-    <form ref={formRef} action={action} className="w-full space-y-3 border border-line bg-white p-4">
+    <form ref={formRef} id="new-task" action={action} className="w-full space-y-3 border border-line bg-white p-4">
       <input type="hidden" name="projectId" value={projectId} />
+      <div className="flex flex-wrap items-center gap-2 border-b border-line pb-3">
+        <label className="text-xs font-medium">Thuộc công việc</label>
+        <select
+          name="parentId"
+          value={parentId}
+          onChange={(e) => {
+            const p = parents.find((t) => t.id === e.target.value);
+            setParentId(e.target.value);
+            if (p) {
+              setStartDate(p.startDate);
+              setDueDate(p.dueDate);
+            }
+          }}
+          className={`${field} max-w-md flex-1`}
+        >
+          <option value="">— Không (đây là công việc chính) —</option>
+          {parents.map((t) => (
+            <option key={t.id} value={t.id}>
+              ↳ subtask của: {t.title}
+            </option>
+          ))}
+        </select>
+        {parent && <span className="text-xs text-zinc-500">Mốc để trống sẽ theo việc cha.</span>}
+      </div>
       <div className="grid gap-3 md:grid-cols-6">
         <div className="md:col-span-3">
           <label className="mb-1 block text-xs font-medium">Tên công việc *</label>
@@ -93,11 +126,11 @@ export function NewTaskForm({
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium">Bắt đầu *</label>
-          <input type="date" name="startDate" required defaultValue={defaultStart} className={field} />
+          <input type="date" name="startDate" required value={startDate} onChange={(e) => setStartDate(e.target.value)} className={field} />
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium">Hạn chót *</label>
-          <input type="date" name="dueDate" required defaultValue={defaultDue} className={field} />
+          <input type="date" name="dueDate" required value={dueDate} onChange={(e) => setDueDate(e.target.value)} className={field} />
         </div>
         <div className="md:col-span-2">
           <label className="mb-1 block text-xs font-medium">Làm sau khi xong (Ctrl/⌘ để chọn nhiều)</label>
@@ -112,7 +145,7 @@ export function NewTaskForm({
       </div>
       <FormMessage error={state.error} message={state.ok ? state.message : undefined} />
       <div className="flex items-center gap-3">
-        <SubmitButton pendingText="Đang lưu…">Tạo công việc</SubmitButton>
+        <SubmitButton pendingText="Đang lưu…">{parent ? 'Tạo subtask' : 'Tạo công việc'}</SubmitButton>
         <button type="button" onClick={() => setOpen(false)} className="text-sm text-zinc-600 hover:text-zinc-900">
           Đóng
         </button>

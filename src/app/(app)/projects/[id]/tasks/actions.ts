@@ -41,11 +41,12 @@ export async function createTaskAction(_prev: FormState, fd: FormData): Promise<
     start_date: startDate,
     due_date: dueDate,
     depends_on: fd.getAll('dependsOn').map(String).filter(Boolean),
-    category: isTaskCategory(str(fd, 'category')) ? str(fd, 'category') : 'task'
+    category: isTaskCategory(str(fd, 'category')) ? str(fd, 'category') : 'task',
+    parent_id: str(fd, 'parentId') || null
   });
   if (error) return { error: dbErrorMessage(error, 'Không tạo được công việc.') };
   refresh();
-  return { ok: true, message: `Đã tạo “${title}”.` };
+  return { ok: true, message: `Đã tạo ${str(fd, 'parentId') ? 'subtask ' : ''}“${title}”.` };
 }
 
 export async function updateTaskStatusAction(taskId: string, status: TaskStatus): Promise<{ error?: string }> {
@@ -100,6 +101,7 @@ export interface TaskPatchInput {
   status?: TaskStatus;
   dependsOn?: string[];
   category?: TaskCategory;
+  parentId?: string | null;
 }
 
 export async function updateTaskAction(taskId: string, patch: TaskPatchInput): Promise<{ error?: string }> {
@@ -113,6 +115,7 @@ export async function updateTaskAction(taskId: string, patch: TaskPatchInput): P
     status?: TaskStatus;
     depends_on?: string[];
     category?: TaskCategory;
+    parent_id?: string | null;
   } = {};
   if (patch.title !== undefined) {
     const t = patch.title.trim();
@@ -139,6 +142,10 @@ export async function updateTaskAction(taskId: string, patch: TaskPatchInput): P
     if (!isTaskCategory(patch.category)) return { error: 'Loại công việc không hợp lệ.' };
     db.category = patch.category;
   }
+  if (patch.parentId !== undefined) {
+    if (patch.parentId === taskId) return { error: 'Công việc không thể là subtask của chính nó.' };
+    db.parent_id = patch.parentId || null;
+  }
   if (Object.keys(db).length === 0) return {};
 
   const supabase = await createClient();
@@ -151,7 +158,7 @@ export async function updateTaskAction(taskId: string, patch: TaskPatchInput): P
 
 export async function createTaskQuickAction(
   projectId: string,
-  input: { title: string; milestoneId: string | null; assigneeId: string | null; startDate: string; dueDate: string; dependsOn: string[]; category?: TaskCategory }
+  input: { title: string; milestoneId: string | null; assigneeId: string | null; startDate: string; dueDate: string; dependsOn: string[]; category?: TaskCategory; parentId?: string | null }
 ): Promise<{ error?: string; id?: string }> {
   const user = await requireUser();
   const project = await getProjectForUser(projectId, user.id);
@@ -173,7 +180,8 @@ export async function createTaskQuickAction(
       start_date: input.startDate,
       due_date: input.dueDate,
       depends_on: input.dependsOn.filter(Boolean).slice(0, 50),
-      category: input.category && isTaskCategory(input.category) ? input.category : 'task'
+      category: input.category && isTaskCategory(input.category) ? input.category : 'task',
+      parent_id: input.parentId || null
     })
     .select('id')
     .single();

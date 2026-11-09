@@ -8,7 +8,7 @@ import { diffDays, isValidISODate } from '@/lib/dates';
 import { createTaskQuickAction, deleteTaskByIdAction, updateTaskAction } from '@/app/(app)/projects/[id]/tasks/actions';
 
 export type DialogState =
-  | { mode: 'create'; milestoneId: string | null; startDate: string; dueDate: string; assigneeId?: string | null; title?: string; category?: TaskCategory }
+  | { mode: 'create'; milestoneId: string | null; startDate: string; dueDate: string; assigneeId?: string | null; title?: string; category?: TaskCategory; parentId?: string | null }
   | { mode: 'edit'; task: Task };
 
 const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-800 disabled:bg-paper-2 disabled:text-zinc-500';
@@ -23,7 +23,8 @@ export function TaskDialog({
   milestones,
   tasks,
   onClose,
-  onSaved
+  onSaved,
+  onOpen
 }: {
   state: DialogState;
   projectId: string;
@@ -34,6 +35,8 @@ export function TaskDialog({
   tasks: Task[];
   onClose: () => void;
   onSaved: (message: string) => void;
+  /** Mở hộp thoại khác (vd. tạo subtask từ việc cha) */
+  onOpen?: (next: DialogState) => void;
 }) {
   const isOwner = role === 'owner';
   const editing = state.mode === 'edit' ? state.task : null;
@@ -49,6 +52,7 @@ export function TaskDialog({
   const [status, setStatus] = useState<TaskStatus>(editing?.status ?? 'todo');
   const [category, setCategory] = useState<TaskCategory>(editing?.category ?? (state.mode === 'create' ? state.category ?? 'task' : 'task'));
   const [dependsOn, setDependsOn] = useState<string[]>(editing?.dependsOn ?? []);
+  const [parentId, setParentId] = useState<string>(editing ? editing.parentId ?? '' : state.mode === 'create' ? state.parentId ?? '' : '');
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, start] = useTransition();
@@ -64,6 +68,11 @@ export function TaskDialog({
   const days = isValidISODate(startDate) && isValidISODate(dueDate) ? diffDays(startDate, dueDate) + 1 : null;
   const assignable = members.filter((m) => m.role !== 'viewer');
   const depCandidates = tasks.filter((t) => t.id !== editing?.id);
+  const children = editing ? tasks.filter((t) => t.parentId === editing.id) : [];
+  // Chỉ 1 cấp: cha phải là việc chính; việc đang có subtask thì không làm subtask được
+  const parentCandidates = children.length ? [] : tasks.filter((t) => !t.parentId && t.id !== editing?.id);
+  const parentTask = tasks.find((t) => t.id === parentId);
+  const noun = parentId ? 'subtask' : 'công việc';
 
   const save = () => {
     setError(null);
@@ -80,6 +89,7 @@ export function TaskDialog({
         if (status !== editing.status) patch.status = status;
         if (dependsOn.join() !== editing.dependsOn.join()) patch.dependsOn = dependsOn;
         if (category !== editing.category) patch.category = category;
+        if ((parentId || null) !== editing.parentId) patch.parentId = parentId || null;
         const r = await updateTaskAction(editing.id, patch);
         if (r.error) return setError(r.error);
         onSaved(`Đã lưu “${title.trim()}”.`);
@@ -91,10 +101,11 @@ export function TaskDialog({
           startDate,
           dueDate,
           dependsOn,
-          category
+          category,
+          parentId: parentId || null
         });
         if (r.error) return setError(r.error);
-        onSaved(`Đã tạo “${title.trim()}”.`);
+        onSaved(`Đã tạo ${parentId ? 'subtask ' : ''}“${title.trim()}”.`);
       }
     });
   };
@@ -112,7 +123,10 @@ export function TaskDialog({
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/30 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
       <div role="dialog" aria-modal="true" aria-label={editing ? 'Sửa công việc' : 'Tạo công việc'} className="w-full max-w-lg space-y-4 border border-zinc-900 bg-white p-5 shadow-xl">
         <div className="flex items-start justify-between gap-3">
-          <h2 className="text-base font-semibold">{editing ? (canEdit ? 'Sửa công việc' : 'Chi tiết công việc') : 'Tạo công việc mới'}</h2>
+          <h2 className="text-base font-semibold">
+            {editing ? (canEdit ? `Sửa ${noun}` : `Chi tiết ${noun}`) : `Tạo ${noun} mới`}
+            {parentTask && <span className="mt-0.5 block text-xs font-normal text-zinc-500">↳ thuộc: {parentTask.title}</span>}
+          </h2>
           <button onClick={onClose} className="text-zinc-500 hover:text-zinc-900" aria-label="Đóng">
             ✕
           </button>
@@ -129,6 +143,20 @@ export function TaskDialog({
             <label className={label}>Tên công việc</label>
             <input ref={titleRef} value={title} onChange={(e) => setTitle(e.target.value)} disabled={!canEdit} maxLength={300} className={field} placeholder="vd. Dịch thang đo sang tiếng Việt" />
           </div>
+
+          {(parentCandidates.length > 0 || parentId) && (
+            <div>
+              <label className={label}>Thuộc công việc (để biến thành subtask)</label>
+              <select value={parentId} onChange={(e) => setParentId(e.target.value)} disabled={!canEdit} className={field}>
+                <option value="">— Không, đây là công việc chính —</option>
+                {parentCandidates.map((t) => (
+                  <option key={t.id} value={t.id}>
+                    ↳ {t.title}
+                  </option>
+                ))}
+              </select>
+            </div>
+          )}
 
           <div>
             <label className={label}>Loại</label>
@@ -227,12 +255,56 @@ export function TaskDialog({
             </div>
           )}
 
+          {editing && !editing.parentId && (
+            <div>
+              <label className={label}>Subtask ({children.length})</label>
+              {children.length > 0 && (
+                <ul className="mb-1.5 max-h-32 space-y-0.5 overflow-y-auto border border-line p-1.5 text-xs">
+                  {children.map((c) => (
+                    <li key={c.id}>
+                      <button
+                        type="button"
+                        onClick={() => onOpen?.({ mode: 'edit', task: c })}
+                        className={`flex w-full items-center gap-1.5 px-1 py-0.5 text-left hover:bg-paper-2 ${c.status === 'done' ? 'text-zinc-400 line-through' : ''}`}
+                      >
+                        <span className={`inline-block h-2 w-2 shrink-0 rounded-full border-2 ${CATEGORY_STYLE[c.category].edge}`} />
+                        <span className="truncate">{c.title}</span>
+                        <span className="ml-auto shrink-0 text-zinc-500">
+                          {TASK_STATUS_LABEL[c.status]} · {c.progress}%
+                        </span>
+                      </button>
+                    </li>
+                  ))}
+                </ul>
+              )}
+              {(isOwner || role === 'editor') && onOpen && (
+                <button
+                  type="button"
+                  onClick={() =>
+                    onOpen({
+                      mode: 'create',
+                      parentId: editing.id,
+                      milestoneId: editing.milestoneId,
+                      startDate: editing.startDate,
+                      dueDate: editing.dueDate,
+                      assigneeId: editing.assigneeId,
+                      category: editing.category
+                    })
+                  }
+                  className="text-xs text-zinc-600 underline hover:text-zinc-900"
+                >
+                  + Thêm subtask
+                </button>
+              )}
+            </div>
+          )}
+
           {error && <p className="border border-rose-300 bg-rose-50 p-2 text-sm text-rose-900">{error}</p>}
 
           <div className="flex flex-wrap items-center gap-3 pt-1">
             {canEdit && (
               <button type="submit" disabled={pending} className="bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-60">
-                {pending ? 'Đang lưu…' : editing ? 'Lưu thay đổi' : 'Tạo công việc'}
+                {pending ? 'Đang lưu…' : editing ? 'Lưu thay đổi' : `Tạo ${noun}`}
               </button>
             )}
             <button type="button" onClick={onClose} className="text-sm text-zinc-600 hover:text-zinc-900">
@@ -242,7 +314,7 @@ export function TaskDialog({
               <span className="ml-auto">
                 {confirmDelete ? (
                   <span className="flex items-center gap-2 text-xs">
-                    Xoá việc này?
+                    {children.length ? `Xoá việc này và ${children.length} subtask?` : 'Xoá việc này?'}
                     <button type="button" onClick={remove} disabled={pending} className="font-semibold text-rose-700 underline">
                       Xoá
                     </button>
