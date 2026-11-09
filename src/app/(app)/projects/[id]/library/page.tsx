@@ -10,6 +10,7 @@ import { AcademicText } from '@/components/library/AcademicText';
 import { AutoRefresh, ConnectFolderForm, ExtractQueue, MetaQueue, SyncButton } from '@/components/library/LibraryControls';
 import { CredibilityCell, flagLevel } from '@/components/library/Credibility';
 import { CitationExport } from '@/components/library/CitationExport';
+import { LibraryNav } from '@/components/library/LibraryNav';
 import { asRelFilter, filterPapers, matchesRel, REL_FILTERS } from '@/lib/library/filter';
 import { LibraryFrame } from '@/components/library/LibraryFrame';
 import { disconnectDriveFolderAction } from './actions';
@@ -148,6 +149,7 @@ export default async function LibraryPage({
   return (
     <div className="space-y-2 px-4 pb-2 pt-3">
       <AutoRefresh seconds={60} />
+      <LibraryNav projectId={id} active="table" />
 
       {!catalogReady && (
         <div className="flex flex-wrap items-center gap-2 border border-sky-300 bg-sky-50 px-3 py-2 text-xs text-sky-900">

@@ -1,7 +1,7 @@
 import { timingSafeEqual } from 'crypto';
 import { NextResponse, type NextRequest } from 'next/server';
 import { createClient as createSupabase } from '@supabase/supabase-js';
-import type { Database } from '@/lib/supabase/database.types';
+import type { Database, Json } from '@/lib/supabase/database.types';
 import { supabaseEnv } from '@/lib/supabase/env';
 import { listPdfs } from '@/lib/google/drive';
 import { resolvePublication } from '@/lib/scholar/publication';
@@ -64,7 +64,7 @@ export async function POST(request: NextRequest) {
       await supabase.rpc('cron_set_paper_meta', {
         p_secret: secret!,
         p_id: p.id,
-        p_meta: { ...meta, issns: meta.issns }
+        p_meta: meta as unknown as Json
       });
       resolved++;
     } catch {
