@@ -142,6 +142,13 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   const stretchRef = useRef<{ x0: number; d0: number; dw0: number; left0: number } | null>(null);
   const [stretching, setStretching] = useState(false);
 
+  /** Vị trí cuộn lúc mở: chế độ Tuần bắt đầu từ thứ Hai tuần này, còn lại để hôm nay cách mép trái 2 ngày */
+  function openScrollLeft(d: number, vw: number) {
+    const s0 = addDays(minDate(project.startDate, today, ...tasksProp.map((t) => t.startDate)), -14);
+    const week = d * 7 >= vw * 0.9;
+    const anchor = week ? addDays(today, -((weekday(today) + 6) % 7)) : addDays(today, -2);
+    return Math.max(0, diffDays(s0, anchor) * d);
+  }
   // Đo bề rộng khung nhìn (và theo dõi khi đổi cỡ cửa sổ); khôi phục độ rộng đã lưu
   useLayoutEffect(() => {
     const el = scrollRef.current;
@@ -155,7 +162,12 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     } catch {
       /* trình duyệt chặn localStorage */
     }
-    setDw(saved > 0 ? saved : w / PRESET_DAYS[initialZoom]);
+    const nd = saved > 0 ? saved : w / PRESET_DAYS[initialZoom];
+    // Mở trang là thấy hôm nay ngay: tính vị trí cuộn theo độ rộng ngày cuối cùng (không phải giá trị tạm lúc render đầu)
+    const left = openScrollLeft(nd, w);
+    pendingScroll.current = left;
+    setDw(nd);
+    el.scrollLeft = left;
     const ro = new ResizeObserver(() => setViewW(measure()));
     ro.observe(el);
     return () => ro.disconnect();
@@ -167,8 +179,12 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     const prev = prevViewW.current;
     prevViewW.current = viewW;
     const preset = (Object.keys(PRESET_DAYS) as TimelineZoom[]).find((z) => Math.abs(dw - prev / PRESET_DAYS[z]) < 0.6);
-    if (preset && prev !== viewW) setDw(viewW / PRESET_DAYS[preset]);
-    else if (dw < minDw - 0.05 || dw > maxDw + 0.05) setDw(clampDw(dw));
+    const next = preset && prev !== viewW ? viewW / PRESET_DAYS[preset] : dw < minDw - 0.05 || dw > maxDw + 0.05 ? clampDw(dw) : dw;
+    if (next === dw) return;
+    // Giữ nguyên ngày đang ở mép trái khi độ rộng ngày đổi theo cỡ khung
+    const el = scrollRef.current;
+    if (el) pendingScroll.current = (el.scrollLeft / dw) * next;
+    setDw(next);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [viewW]);
   useEffect(() => {
@@ -247,11 +263,6 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   const x = (iso: string) => diffDays(start, iso) * dw;
   const dayIso = (d: number) => addDays(start, d);
 
-  // Cuộn tới hôm nay khi mở trang
-  useEffect(() => {
-    if (scrollRef.current) scrollRef.current.scrollLeft = Math.max(0, x(today) - 4 * dw);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
 
   // ---- Làn: thành viên có thể nhận việc + "Chưa giao" ----
   const lanes: Lane[] = useMemo(() => {
@@ -642,7 +653,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   const weekMode = dw * 7 >= viewW * 0.9;
   // Chế độ Tuần: bắt đầu từ thứ Hai như Google Calendar; chế độ khác: để hôm nay cách mép trái 4 ngày
   const scrollToToday = () =>
-    scrollRef.current?.scrollTo({ left: Math.max(0, weekMode ? x(mondayOf(today)) : x(today) - 4 * dw), behavior: 'smooth' });
+    scrollRef.current?.scrollTo({ left: Math.max(0, weekMode ? x(mondayOf(today)) : x(today) - 2 * dw), behavior: 'smooth' });
   const iconBtn = 'flex h-9 w-9 items-center justify-center text-ink-2 hover:bg-paper-2';
   const navStep = weekMode ? 7 : 30;
   const scrollByDays = (n: number) => scrollRef.current?.scrollBy({ left: n * dw, behavior: 'smooth' });
