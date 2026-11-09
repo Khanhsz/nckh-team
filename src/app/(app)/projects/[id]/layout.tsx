@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
-import { getProjectForUser, listMembers } from '@/lib/data/queries';
+import { getProjectForUser, listMembers, listMyOwnershipInvites } from '@/lib/data/queries';
+import { TransferResponse } from '@/components/settings/TransferResponse';
 import { formatFull } from '@/lib/dates';
 import { ROLE_LABEL } from '@/lib/types';
 import { NavLink } from '@/components/ui/NavLink';
@@ -11,7 +12,8 @@ export default async function ProjectLayout({ children, params }: { children: Re
   const user = await requireUser();
   const project = await getProjectForUser(id, user.id);
   if (!project) notFound();
-  const members = await listMembers(id);
+  const [members, invites] = await Promise.all([listMembers(id), listMyOwnershipInvites()]);
+  const invite = invites.find((i) => i.project_id === id);
   const owner = members.find((m) => m.role === 'owner');
 
   return (
@@ -36,6 +38,14 @@ export default async function ProjectLayout({ children, params }: { children: Re
           <NavLink variant="tab" href={`/projects/${id}/settings`}>Thành viên & cài đặt</NavLink>
         </nav>
       </header>
+      {invite && (
+        <div className="flex flex-wrap items-center gap-3 border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+          <span>
+            👑 <b>{invite.from_name}</b> muốn trao quyền trưởng nhóm dự án này cho bạn{invite.message ? ` — “${invite.message}”` : ''}.
+          </span>
+          <TransferResponse transferId={invite.id} compact />
+        </div>
+      )}
       <div className="flex-1">{children}</div>
     </div>
   );

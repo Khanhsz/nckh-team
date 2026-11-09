@@ -1,7 +1,9 @@
 import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
-import { getCatalogStatus, getProjectForUser, listMembers, listMilestones, listWatchlist } from '@/lib/data/queries';
+import { getCatalogStatus, getPendingTransfer, getProjectForUser, listMembers, listMilestones, listWatchlist } from '@/lib/data/queries';
+import { TransferOwnership } from '@/components/settings/TransferOwnership';
+import { smtpConfigured } from '@/lib/mail/smtp';
 import { CatalogManager } from '@/components/settings/CatalogManager';
 import { addDays, formatFull, todayISO } from '@/lib/dates';
 import { ROLE_LABEL } from '@/lib/types';
@@ -14,7 +16,13 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   const user = await requireUser();
   const project = await getProjectForUser(id, user.id);
   if (!project) notFound();
-  const [members, milestones, catalog, watch] = await Promise.all([listMembers(id), listMilestones(id), getCatalogStatus(), listWatchlist(id)]);
+  const [members, milestones, catalog, watch, transfer] = await Promise.all([
+    listMembers(id),
+    listMilestones(id),
+    getCatalogStatus(),
+    listWatchlist(id),
+    project.role === 'owner' ? getPendingTransfer(id) : Promise.resolve(null)
+  ]);
   const isOwner = project.role === 'owner';
 
   return (
@@ -124,6 +132,23 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           {isOwner ? <AddWatchForm projectId={id} /> : <p className="text-xs text-zinc-500">Chỉ trưởng nhóm sửa được danh sách này.</p>}
         </Section>
       </div>
+
+      {isOwner && (
+        <div className="xl:col-span-2">
+          <Section title="👑 Trao quyền trưởng nhóm">
+            <TransferOwnership
+              projectId={id}
+              members={members}
+              smtpReady={smtpConfigured()}
+              pending={
+                transfer
+                  ? { id: transfer.id, toName: members.find((m) => m.userId === transfer.to_user)?.displayName ?? 'thành viên', expiresAt: transfer.expires_at }
+                  : null
+              }
+            />
+          </Section>
+        </div>
+      )}
 
       <Section title="Phân quyền">
         <ul className="space-y-1.5 text-sm text-zinc-700">

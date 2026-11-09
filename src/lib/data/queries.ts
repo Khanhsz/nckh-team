@@ -224,3 +224,22 @@ export async function listRanksByIssns(issns: string[]): Promise<Map<string, { q
   for (const r of data ?? []) for (const i of r.issns) if (!map.has(i)) map.set(i, { quartile: r.quartile, title: r.title });
   return map;
 }
+
+/* ---------------- Trao quyền trưởng nhóm ---------------- */
+export const listMyOwnershipInvites = cache(async () => {
+  const sb = await createClient();
+  const { data } = await sb.rpc('my_ownership_invites');
+  return data ?? [];
+});
+
+export async function getPendingTransfer(projectId: string) {
+  const sb = await createClient();
+  const { data } = await sb
+    .from('ownership_transfers')
+    .select('id, to_user, created_at, expires_at')
+    .eq('project_id', projectId)
+    .eq('status', 'pending')
+    .gt('expires_at', new Date().toISOString())
+    .maybeSingle();
+  return data;
+}

@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth/session';
-import { getNotifySettings, listMyProjects, listTasksAndMilestonesFor } from '@/lib/data/queries';
+import { getNotifySettings, listMyOwnershipInvites, listMyProjects, listTasksAndMilestonesFor } from '@/lib/data/queries';
+import { TransferResponse } from '@/components/settings/TransferResponse';
 import { ReminderCard } from '@/components/notify/ReminderCard';
 import { smtpConfigured } from '@/lib/mail/smtp';
 import { getSiteUrl } from '@/lib/site';
@@ -13,10 +14,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const { welcome, pw } = await searchParams;
   const user = await requireUser();
   const projects = await listMyProjects(user.id);
-  const [{ tasks, milestones }, notify, site] = await Promise.all([
+  const [{ tasks, milestones }, notify, site, invites] = await Promise.all([
     listTasksAndMilestonesFor(projects.map((p) => p.id)),
     getNotifySettings(user.id),
-    getSiteUrl()
+    getSiteUrl(),
+    listMyOwnershipInvites()
   ]);
 
   const today = todayISO();
@@ -35,6 +37,15 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
         <Notice tone="emerald">Hồ sơ đã lưu. Mở Masterplan của dự án để nắm tiến độ chung; việc được giao cho bạn sẽ hiện ở trang này.</Notice>
       )}
       {pw && <Notice tone="emerald">Đã đổi mật khẩu.</Notice>}
+
+      {invites.map((i) => (
+        <div key={i.id} className="flex flex-wrap items-center gap-3 border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
+          <span className="min-w-0 flex-1">
+            👑 <b>{i.from_name}</b> muốn trao quyền trưởng nhóm dự án <b>{i.project_name}</b> cho bạn{i.message ? ` — “${i.message}”` : ''}.
+          </span>
+          <TransferResponse transferId={i.id} compact />
+        </div>
+      ))}
 
       <header>
         <p className="text-sm text-zinc-500">Hôm nay, {formatShort(today)}</p>

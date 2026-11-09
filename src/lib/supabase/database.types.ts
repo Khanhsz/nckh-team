@@ -21,6 +21,12 @@ export type Database = {
           { foreignKeyName: 'milestones_project_id_fkey'; columns: ['project_id']; isOneToOne: false; referencedRelation: 'projects'; referencedColumns: ['id'] }
         ];
       };
+      ownership_transfers: {
+        Row: { id: string; project_id: string; from_user: string; to_user: string; status: string; message: string | null; created_at: string; expires_at: string; responded_at: string | null };
+        Insert: { id?: string; project_id: string; from_user: string; to_user: string; status?: string; message?: string | null };
+        Update: { status?: string; responded_at?: string | null };
+        Relationships: [];
+      };
       paper_refs: {
         Row: { paper_id: string; project_id: string; refs: Json; ref_count: number; fetched_at: string };
         Insert: { paper_id: string; project_id: string; refs?: Json; ref_count?: number; fetched_at?: string };
@@ -200,6 +206,13 @@ export type Database = {
       cron_set_paper_meta: { Args: { p_secret: string; p_id: string; p_meta: Json }; Returns: undefined };
       is_any_project_owner: { Args: Record<string, never>; Returns: boolean };
       rotate_calendar_token: { Args: Record<string, never>; Returns: string };
+      request_ownership_transfer: { Args: { p_project_id: string; p_to_user: string; p_message?: string | null }; Returns: string };
+      respond_ownership_transfer: { Args: { p_id: string; p_accept: boolean }; Returns: string };
+      cancel_ownership_transfer: { Args: { p_id: string }; Returns: undefined };
+      my_ownership_invites: {
+        Args: Record<string, never>;
+        Returns: { id: string; project_id: string; project_name: string; project_code: string | null; from_name: string; message: string | null; created_at: string; expires_at: string }[];
+      };
       calendar_feed: {
         Args: { p_token: string };
         Returns: {

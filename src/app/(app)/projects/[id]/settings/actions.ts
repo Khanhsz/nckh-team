@@ -7,6 +7,9 @@ import { dbErrorMessage } from '@/lib/errors';
 import { isValidISODate } from '@/lib/dates';
 import { getSiteUrl, str } from '@/lib/site';
 import type { FormState } from '@/lib/auth/actions';
+import { getProjectForUser, listMembers } from '@/lib/data/queries';
+import { sendMails, smtpConfigured } from '@/lib/mail/smtp';
+import { transferInviteMail } from '@/lib/mail/templates';
 
 const refresh = () => revalidatePath('/', 'layout');
 
@@ -135,6 +138,47 @@ export async function quickWatchAction(projectId: string, kind: 'publisher' | 'j
   const supabase = await createClient();
   const { error } = await supabase.from('project_watchlist').insert({ project_id: projectId, kind, name: name.trim().slice(0, 300) });
   if (error && error.code !== '23505') return { error: dbErrorMessage(error, 'Chỉ trưởng nhóm được sửa danh sách theo dõi.') };
+  refresh();
+  return {};
+}
+
+/* ---------------- Trao quyền trưởng nhóm ---------------- */
+
+export async function requestTransferAction(projectId: string, toUserId: string, message: string): Promise<{ error?: string; emailed?: boolean }> {
+  const user = await requireUser();
+  const supabase = await createClient();
+  const { data: tid, error } = await supabase.rpc('request_ownership_transfer', { p_project_id: projectId, p_to_user: toUserId, p_message: message.slice(0, 500) || null });
+  if (error || !tid) return { error: dbErrorMessage(error, 'Không gửi được lời mời.') };
+
+  let emailed = false;
+  if (smtpConfigured()) {
+    const [members, project] = await Promise.all([listMembers(projectId), getProjectForUser(projectId, user.id)]);
+    const to = members.find((m) => m.userId === toUserId);
+    if (to?.email && project) {
+      const expires = new Date(Date.now() + 7 * 86400000).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' });
+      const r = await sendMails([
+        transferInviteMail({
+          to: to.email,
+          toName: to.displayName,
+          fromName: user.profile.displayName,
+          project: project.name,
+          message: message.trim() || null,
+          link: `${await getSiteUrl()}/transfer/${tid}`,
+          expires
+        })
+      ]);
+      emailed = r.sent > 0;
+    }
+  }
+  refresh();
+  return { emailed };
+}
+
+export async function cancelTransferAction(transferId: string): Promise<{ error?: string }> {
+  await requireUser();
+  const supabase = await createClient();
+  const { error } = await supabase.rpc('cancel_ownership_transfer', { p_id: transferId });
+  if (error) return { error: dbErrorMessage(error) };
   refresh();
   return {};
 }
