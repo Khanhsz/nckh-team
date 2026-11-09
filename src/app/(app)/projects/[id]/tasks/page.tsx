@@ -3,7 +3,8 @@ import { requireUser } from '@/lib/auth/session';
 import { getProjectForUser, listMembers, listMilestones, listTasks } from '@/lib/data/queries';
 import { canCreateTask, canManage, canUpdateTask } from '@/lib/data/permissions';
 import { addDays, dueLabel, formatShort, todayISO } from '@/lib/dates';
-import { Avatar } from '@/components/ui/badges';
+import { Avatar, CategoryDot } from '@/components/ui/badges';
+import { TASK_CATEGORY_LABEL } from '@/lib/types';
 import { NewTaskForm } from '@/components/tasks/NewTaskForm';
 import { AssigneeSelect, ProgressInput, StatusSelect } from '@/components/tasks/TaskControls';
 import { deleteTaskAction } from './actions';
@@ -78,7 +79,10 @@ export default async function TasksPage({
               return (
                 <tr key={t.id} className="align-top hover:bg-paper/60">
                   <td className="max-w-sm px-3 py-2.5">
-                    <p className={`font-medium ${t.status === 'done' ? 'text-zinc-400 line-through' : ''}`}>{t.title}</p>
+                    <p className={`flex items-center gap-2 font-medium ${t.status === 'done' ? 'text-zinc-400 line-through' : ''}`} title={TASK_CATEGORY_LABEL[t.category]}>
+                      <CategoryDot category={t.category} />
+                      {t.title}
+                    </p>
                     {deps.length > 0 && <p className="mt-0.5 text-[11px] text-zinc-500">Sau: {deps.join('; ')}</p>}
                   </td>
                   <td className="px-3 py-2.5 text-xs text-zinc-600">{t.milestoneId ? milestoneById.get(t.milestoneId)?.name : '—'}</td>

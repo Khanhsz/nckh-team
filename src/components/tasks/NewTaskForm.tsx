@@ -2,6 +2,7 @@
 
 import { useActionState, useEffect, useRef, useState } from 'react';
 import type { Member, Milestone, Task } from '@/lib/types';
+import { TASK_CATEGORIES, TASK_CATEGORY_LABEL } from '@/lib/types';
 import type { FormState } from '@/lib/auth/actions';
 import { createTaskAction } from '@/app/(app)/projects/[id]/tasks/actions';
 import { FormMessage, SubmitButton } from '@/components/ui/FormBits';
@@ -51,13 +52,23 @@ export function NewTaskForm({
           <label className="mb-1 block text-xs font-medium">Tên công việc *</label>
           <input name="title" required maxLength={300} className={field} placeholder="vd. Dịch thang đo IWPQ sang tiếng Việt" />
         </div>
-        <div className="md:col-span-3">
+        <div className="md:col-span-2">
           <label className="mb-1 block text-xs font-medium">Thuộc mốc</label>
           <select name="milestoneId" className={field} defaultValue="">
             <option value="">— Chưa gắn mốc —</option>
             {milestones.map((m) => (
               <option key={m.id} value={m.id}>
                 {m.name}
+              </option>
+            ))}
+          </select>
+        </div>
+        <div>
+          <label className="mb-1 block text-xs font-medium">Loại</label>
+          <select name="category" className={field} defaultValue="task">
+            {TASK_CATEGORIES.map((c) => (
+              <option key={c} value={c}>
+                {TASK_CATEGORY_LABEL[c]}
               </option>
             ))}
           </select>

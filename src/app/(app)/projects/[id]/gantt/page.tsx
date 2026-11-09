@@ -3,9 +3,7 @@ import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
 import { getProjectForUser, listMembers, listMilestones, listTasks } from '@/lib/data/queries';
 import { todayISO } from '@/lib/dates';
-import { TASK_STATUS_LABEL, TASK_STATUSES } from '@/lib/types';
 import { TimelineCalendar } from '@/components/timeline/TimelineCalendar';
-import { STATUS_STYLE } from '@/components/ui/badges';
 
 
 export default async function GanttPage({
@@ -50,19 +48,6 @@ export default async function GanttPage({
         <Stat label="Tiến độ chung" value={`${progress}%`} />
         <Stat label="Hoàn thành" value={`${done}/${tasks.length}`} />
         <Stat label="Quá hạn" value={String(late)} danger={late > 0} />
-        <div className="ml-auto flex flex-wrap items-center gap-4">
-          <div className="flex flex-wrap gap-3 text-[11px] text-zinc-600">
-            {TASK_STATUSES.map((s) => (
-              <span key={s} className="flex items-center gap-1">
-                <span className={`h-2.5 w-4 rounded-sm ${STATUS_STYLE[s].barFill}`} />
-                {TASK_STATUS_LABEL[s]}
-              </span>
-            ))}
-            <span className="flex items-center gap-1">
-              <span className="h-3 w-px bg-rose-500" /> Hôm nay
-            </span>
-          </div>
-        </div>
       </div>
 
       {tasks.length === 0 && milestones.length === 0 && project.role === 'viewer' ? (

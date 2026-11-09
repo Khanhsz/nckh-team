@@ -1,13 +1,14 @@
 'use client';
 
 import { useEffect, useRef, useState, useTransition } from 'react';
-import type { Member, Milestone, ProjectRole, Task, TaskStatus } from '@/lib/types';
-import { TASK_STATUS_LABEL, TASK_STATUSES } from '@/lib/types';
+import type { Member, Milestone, ProjectRole, Task, TaskCategory, TaskStatus } from '@/lib/types';
+import { TASK_CATEGORIES, TASK_CATEGORY_LABEL, TASK_STATUS_LABEL, TASK_STATUSES } from '@/lib/types';
+import { CATEGORY_STYLE } from '@/components/ui/badges';
 import { diffDays, isValidISODate } from '@/lib/dates';
 import { createTaskQuickAction, deleteTaskByIdAction, updateTaskAction } from '@/app/(app)/projects/[id]/tasks/actions';
 
 export type DialogState =
-  | { mode: 'create'; milestoneId: string | null; startDate: string; dueDate: string; assigneeId?: string | null; title?: string }
+  | { mode: 'create'; milestoneId: string | null; startDate: string; dueDate: string; assigneeId?: string | null; title?: string; category?: TaskCategory }
   | { mode: 'edit'; task: Task };
 
 const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-800 disabled:bg-paper-2 disabled:text-zinc-500';
@@ -46,6 +47,7 @@ export function TaskDialog({
   const [startDate, setStartDate] = useState(editing?.startDate ?? (state.mode === 'create' ? state.startDate : ''));
   const [dueDate, setDueDate] = useState(editing?.dueDate ?? (state.mode === 'create' ? state.dueDate : ''));
   const [status, setStatus] = useState<TaskStatus>(editing?.status ?? 'todo');
+  const [category, setCategory] = useState<TaskCategory>(editing?.category ?? (state.mode === 'create' ? state.category ?? 'task' : 'task'));
   const [dependsOn, setDependsOn] = useState<string[]>(editing?.dependsOn ?? []);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
@@ -77,6 +79,7 @@ export function TaskDialog({
         if (dueDate !== editing.dueDate) patch.dueDate = dueDate;
         if (status !== editing.status) patch.status = status;
         if (dependsOn.join() !== editing.dependsOn.join()) patch.dependsOn = dependsOn;
+        if (category !== editing.category) patch.category = category;
         const r = await updateTaskAction(editing.id, patch);
         if (r.error) return setError(r.error);
         onSaved(`Đã lưu “${title.trim()}”.`);
@@ -87,7 +90,8 @@ export function TaskDialog({
           assigneeId: assigneeId || null,
           startDate,
           dueDate,
-          dependsOn
+          dependsOn,
+          category
         });
         if (r.error) return setError(r.error);
         onSaved(`Đã tạo “${title.trim()}”.`);
@@ -124,6 +128,28 @@ export function TaskDialog({
           <div>
             <label className={label}>Tên công việc</label>
             <input ref={titleRef} value={title} onChange={(e) => setTitle(e.target.value)} disabled={!canEdit} maxLength={300} className={field} placeholder="vd. Dịch thang đo sang tiếng Việt" />
+          </div>
+
+          <div>
+            <label className={label}>Loại</label>
+            <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Loại công việc">
+              {TASK_CATEGORIES.map((c) => (
+                <button
+                  key={c}
+                  type="button"
+                  role="radio"
+                  aria-checked={category === c}
+                  disabled={!canEdit}
+                  onClick={() => setCategory(c)}
+                  className={`flex items-center gap-1.5 border px-2.5 py-1 text-xs disabled:opacity-60 ${
+                    category === c ? 'border-zinc-900 bg-paper-2 font-semibold' : 'border-line bg-white hover:bg-paper'
+                  }`}
+                >
+                  <span className={`inline-block h-3 w-3 rounded-sm ${CATEGORY_STYLE[c].fill}`} />
+                  {TASK_CATEGORY_LABEL[c]}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="grid grid-cols-2 gap-3">

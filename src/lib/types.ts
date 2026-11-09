@@ -2,6 +2,7 @@
 
 export type ProjectRole = 'owner' | 'editor' | 'viewer';
 export type TaskStatus = 'todo' | 'doing' | 'review' | 'done';
+export type TaskCategory = 'task' | 'meeting' | 'data' | 'survey';
 
 export interface Profile {
   id: string;
@@ -60,6 +61,7 @@ export interface Task {
   dependsOn: string[];
   progress: number;
   status: TaskStatus;
+  category: TaskCategory;
   createdBy: string;
   updatedAt: string;
 }
@@ -95,6 +97,10 @@ export const PAPER_STATUS_LABEL: Record<PaperStatus, string> = {
 };
 
 export const TASK_STATUSES: TaskStatus[] = ['todo', 'doing', 'review', 'done'];
+
+export const TASK_CATEGORIES: TaskCategory[] = ['task', 'meeting', 'data', 'survey'];
+export const TASK_CATEGORY_LABEL: Record<TaskCategory, string> = { task: 'Task', meeting: 'Meeting', data: 'Data', survey: 'Survey' };
+export const isTaskCategory = (v: string): v is TaskCategory => (TASK_CATEGORIES as string[]).includes(v);
 
 export const TASK_STATUS_LABEL: Record<TaskStatus, string> = {
   todo: 'Chưa làm',

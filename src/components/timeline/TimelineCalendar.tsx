@@ -2,10 +2,10 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent, type PointerEvent as RPE } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Member, Milestone, Project, ProjectRole, Task } from '@/lib/types';
-import { TASK_STATUS_LABEL } from '@/lib/types';
+import type { Member, Milestone, Project, ProjectRole, Task, TaskCategory } from '@/lib/types';
+import { TASK_CATEGORIES, TASK_CATEGORY_LABEL, TASK_STATUS_LABEL } from '@/lib/types';
 import { addDays, diffDays, formatFull, formatShort, maxDate, minDate, weekday } from '@/lib/dates';
-import { STATUS_STYLE } from '@/components/ui/badges';
+import { CATEGORY_STYLE } from '@/components/ui/badges';
 import { createTaskQuickAction, updateTaskAction } from '@/app/(app)/projects/[id]/tasks/actions';
 import { updateMilestoneAction } from '@/app/(app)/projects/[id]/settings/actions';
 import { TaskDialog, type DialogState } from './TaskDialog';
@@ -83,6 +83,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   const [drag, setDrag] = useState<Drag | null>(null);
   const [quick, setQuick] = useState<{ laneKey: string; a: number; b: number } | null>(null);
   const [quickTitle, setQuickTitle] = useState('');
+  const [quickCategory, setQuickCategory] = useState<TaskCategory>('task');
   const [dialog, setDialog] = useState<DialogState | null>(null);
   const [flash, setFlash] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
   const [saving, startTransition] = useTransition();
@@ -384,6 +385,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
       dependsOn: [],
       progress: 0,
       status: 'todo',
+      category: quickCategory,
       createdBy: userId,
       updatedAt: ''
     };
@@ -398,7 +400,8 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
           assigneeId: lane?.memberId ?? null,
           startDate,
           dueDate,
-          dependsOn: []
+          dependsOn: [],
+          category: quickCategory
         }),
       `Đã tạo “${title}”`
     );
@@ -474,7 +477,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
       `${formatFull(t.startDate)} → ${formatFull(t.dueDate)} (${diffDays(t.startDate, t.dueDate) + 1} ngày)`,
       `Phụ trách: ${memberName(t.assigneeId)}`,
       ms ? `Mốc: ${ms.name}` : '',
-      `${TASK_STATUS_LABEL[t.status]} · ${t.progress}%`
+      `${TASK_CATEGORY_LABEL[t.category]} · ${TASK_STATUS_LABEL[t.status]} · ${t.progress}%`
     ]
       .filter(Boolean)
       .join('\n');
@@ -487,9 +490,9 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
         onPointerMove={opts.ghost ? undefined : (e) => onChipMove(e, t)}
         onPointerUp={opts.ghost ? undefined : () => onChipUp(t)}
         onPointerCancel={() => setDrag(null)}
-        className={`group absolute touch-none overflow-hidden rounded border text-[12px] leading-tight ${STATUS_STYLE[t.status].badge} ${
-          overdue ? 'ring-2 ring-rose-500' : ''
-        } ${opts.ghost ? 'pointer-events-none z-20 shadow-lg ring-2 ring-sky-500' : ''} ${opts.dim ? 'opacity-30' : ''} ${
+        className={`group absolute touch-none overflow-hidden rounded border text-[12px] leading-tight ${CATEGORY_STYLE[t.category].chip} ${
+          t.status === 'review' ? 'border-2 border-dashed' : ''
+        } ${t.status === 'done' ? 'opacity-55' : ''} ${overdue ? 'ring-2 ring-rose-500' : ''} ${opts.ghost ? 'pointer-events-none z-20 shadow-lg ring-2 ring-sky-500' : ''} ${opts.dim ? 'opacity-30' : ''} ${
           draggable ? 'cursor-grab active:cursor-grabbing' : 'cursor-pointer'
         } ${t.id.startsWith('temp-') ? 'animate-pulse' : ''}`}
         style={{ left: left + 1, top, width: w, height: CHIP_H }}
@@ -497,7 +500,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
         <div className="pointer-events-none flex h-full items-center gap-1 px-1.5">
           <span className={`truncate font-medium ${t.status === 'done' ? 'line-through opacity-60' : ''}`}>{t.title}</span>
         </div>
-        <div className={`pointer-events-none absolute bottom-0 left-0 h-[3px] ${STATUS_STYLE[t.status].barFill}`} style={{ width: `${t.progress}%` }} />
+        <div className={`pointer-events-none absolute bottom-0 left-0 h-[3px] ${CATEGORY_STYLE[t.category].fill}`} style={{ width: `${t.progress}%` }} />
         {draggable && (
           <>
             <span className="absolute inset-y-0 left-0 w-2 cursor-ew-resize group-hover:bg-zinc-900/15" />
@@ -545,6 +548,18 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
         </button>
         <span className="w-16 font-mono text-zinc-600">{Math.round(dw)} px/ngày</span>
         <span className="text-zinc-400">· kéo trên thanh ngày hoặc Ctrl + cuộn chuột để co giãn</span>
+        <span className="ml-auto flex items-center gap-3 text-zinc-500" aria-label="Chú thích màu">
+          {TASK_CATEGORIES.map((c) => (
+            <span key={c} className="flex items-center gap-1">
+              <span className={`inline-block h-2.5 w-2.5 rounded-sm ${CATEGORY_STYLE[c].fill}`} />
+              {TASK_CATEGORY_LABEL[c]}
+            </span>
+          ))}
+          <span className="flex items-center gap-1 border-l border-line pl-3">
+            <span className="inline-block h-2.5 w-3.5 rounded-sm border-2 border-dashed border-zinc-500" />
+            Chờ duyệt
+          </span>
+        </span>
       </div>
       <div className="flex min-h-7 flex-wrap items-center gap-3 text-xs">
         <span className="text-zinc-500">
@@ -699,6 +714,20 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
                           placeholder="Tên công việc rồi Enter…"
                           className="w-full border border-line px-2 py-1.5 text-sm outline-none focus:border-zinc-800"
                         />
+                        <div className="mt-1.5 flex items-center gap-1.5" role="radiogroup" aria-label="Loại công việc">
+                          {TASK_CATEGORIES.map((c) => (
+                            <button
+                              key={c}
+                              type="button"
+                              role="radio"
+                              aria-checked={quickCategory === c}
+                              title={TASK_CATEGORY_LABEL[c]}
+                              onClick={() => setQuickCategory(c)}
+                              className={`h-5 w-5 rounded-sm ${CATEGORY_STYLE[c].fill} ${quickCategory === c ? 'ring-2 ring-zinc-900 ring-offset-1' : 'opacity-60 hover:opacity-100'}`}
+                            />
+                          ))}
+                          <span className="ml-1 text-[11px] text-zinc-500">{TASK_CATEGORY_LABEL[quickCategory]}</span>
+                        </div>
                         <p className="mt-1.5 text-[11px] text-zinc-600">
                           {formatShort(dayIso(quick.a))} → {formatShort(dayIso(quick.b))} · {quick.b - quick.a + 1} ngày · {lane.memberId ? lane.label.replace(' (bạn)', '') : 'Chưa giao'}
                           {autoMilestone(dayIso(quick.a)) && <> · mốc “{autoMilestone(dayIso(quick.a))!.name}”</>}
@@ -715,7 +744,8 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
                                 startDate: dayIso(quick.a),
                                 dueDate: dayIso(quick.b),
                                 assigneeId: lane.memberId,
-                                title: quickTitle
+                                title: quickTitle,
+                                category: quickCategory
                               });
                               setQuick(null);
                             }}

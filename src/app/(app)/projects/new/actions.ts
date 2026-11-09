@@ -11,7 +11,8 @@ import { str } from '@/lib/site';
 import type { FormState } from '@/lib/auth/actions';
 
 /** Kế hoạch mẫu cho một đề tài định lượng — tỉ lệ theo tổng thời gian dự án. */
-const TEMPLATE: { milestone: string; at: number; tasks: [string, number, number][] }[] = [
+type Cat = 'task' | 'meeting' | 'data' | 'survey';
+const TEMPLATE: { milestone: string; at: number; tasks: [string, number, number, Cat?][] }[] = [
   {
     milestone: 'Tổng quan tài liệu',
     at: 0.15,
@@ -27,16 +28,16 @@ const TEMPLATE: { milestone: string; at: number; tasks: [string, number, number]
     tasks: [
       ['Đề xuất mô hình & giả thuyết', 0.15, 0.24],
       ['Kế thừa & dịch thang đo (back-translation)', 0.23, 0.31],
-      ['Khảo sát thử (pilot)', 0.31, 0.35]
+      ['Khảo sát thử (pilot)', 0.31, 0.35, 'survey']
     ]
   },
-  { milestone: 'Thu thập dữ liệu', at: 0.6, tasks: [['Khảo sát chính thức', 0.36, 0.6]] },
+  { milestone: 'Thu thập dữ liệu', at: 0.6, tasks: [['Khảo sát chính thức', 0.36, 0.6, 'survey']] },
   {
     milestone: 'Xử lý & phân tích dữ liệu',
     at: 0.8,
     tasks: [
-      ['Làm sạch dữ liệu & CFA', 0.6, 0.7],
-      ['Kiểm định mô hình cấu trúc (SEM)', 0.69, 0.8]
+      ['Làm sạch dữ liệu & CFA', 0.6, 0.7, 'data'],
+      ['Kiểm định mô hình cấu trúc (SEM)', 0.69, 0.8, 'data']
     ]
   },
   {
@@ -88,7 +89,7 @@ export async function createProjectAction(_prev: FormState, fd: FormData): Promi
         .from('milestones')
         .insert({ id: milestoneId, project_id: projectId, name: block.milestone, due_date: at(block.at), sort_order: i + 1 });
       if (mErr) break;
-      for (const [title, s, e] of block.tasks) {
+      for (const [title, s, e, cat] of block.tasks) {
         const taskId = randomUUID();
         const start = at(s);
         const due = at(e) < start ? start : at(e);
@@ -99,7 +100,8 @@ export async function createProjectAction(_prev: FormState, fd: FormData): Promi
           title,
           start_date: start,
           due_date: due,
-          depends_on: prevTaskId ? [prevTaskId] : []
+          depends_on: prevTaskId ? [prevTaskId] : [],
+          category: cat ?? 'task'
         });
         if (!tErr) prevTaskId = taskId;
       }

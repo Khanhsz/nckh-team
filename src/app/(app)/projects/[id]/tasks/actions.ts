@@ -7,7 +7,7 @@ import { getProjectForUser } from '@/lib/data/queries';
 import { dbErrorMessage } from '@/lib/errors';
 import { isValidISODate } from '@/lib/dates';
 import { str } from '@/lib/site';
-import { TASK_STATUSES, type TaskStatus } from '@/lib/types';
+import { isTaskCategory, TASK_STATUSES, type TaskCategory, type TaskStatus } from '@/lib/types';
 import type { FormState } from '@/lib/auth/actions';
 
 /**
@@ -40,7 +40,8 @@ export async function createTaskAction(_prev: FormState, fd: FormData): Promise<
     assignee_id: assigneeId,
     start_date: startDate,
     due_date: dueDate,
-    depends_on: fd.getAll('dependsOn').map(String).filter(Boolean)
+    depends_on: fd.getAll('dependsOn').map(String).filter(Boolean),
+    category: isTaskCategory(str(fd, 'category')) ? str(fd, 'category') : 'task'
   });
   if (error) return { error: dbErrorMessage(error, 'Không tạo được công việc.') };
   refresh();
@@ -98,6 +99,7 @@ export interface TaskPatchInput {
   dueDate?: string;
   status?: TaskStatus;
   dependsOn?: string[];
+  category?: TaskCategory;
 }
 
 export async function updateTaskAction(taskId: string, patch: TaskPatchInput): Promise<{ error?: string }> {
@@ -110,6 +112,7 @@ export async function updateTaskAction(taskId: string, patch: TaskPatchInput): P
     due_date?: string;
     status?: TaskStatus;
     depends_on?: string[];
+    category?: TaskCategory;
   } = {};
   if (patch.title !== undefined) {
     const t = patch.title.trim();
@@ -132,6 +135,10 @@ export async function updateTaskAction(taskId: string, patch: TaskPatchInput): P
     db.status = patch.status;
   }
   if (patch.dependsOn !== undefined) db.depends_on = patch.dependsOn.filter(Boolean).slice(0, 50);
+  if (patch.category !== undefined) {
+    if (!isTaskCategory(patch.category)) return { error: 'Loại công việc không hợp lệ.' };
+    db.category = patch.category;
+  }
   if (Object.keys(db).length === 0) return {};
 
   const supabase = await createClient();
@@ -144,7 +151,7 @@ export async function updateTaskAction(taskId: string, patch: TaskPatchInput): P
 
 export async function createTaskQuickAction(
   projectId: string,
-  input: { title: string; milestoneId: string | null; assigneeId: string | null; startDate: string; dueDate: string; dependsOn: string[] }
+  input: { title: string; milestoneId: string | null; assigneeId: string | null; startDate: string; dueDate: string; dependsOn: string[]; category?: TaskCategory }
 ): Promise<{ error?: string; id?: string }> {
   const user = await requireUser();
   const project = await getProjectForUser(projectId, user.id);
@@ -165,7 +172,8 @@ export async function createTaskQuickAction(
       assignee_id: project.role === 'owner' ? input.assigneeId || null : user.id,
       start_date: input.startDate,
       due_date: input.dueDate,
-      depends_on: input.dependsOn.filter(Boolean).slice(0, 50)
+      depends_on: input.dependsOn.filter(Boolean).slice(0, 50),
+      category: input.category && isTaskCategory(input.category) ? input.category : 'task'
     })
     .select('id')
     .single();

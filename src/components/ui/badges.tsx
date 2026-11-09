@@ -1,4 +1,4 @@
-import type { TaskStatus } from '@/lib/types';
+import type { TaskCategory, TaskStatus } from '@/lib/types';
 import { TASK_STATUS_LABEL } from '@/lib/types';
 
 export const STATUS_STYLE: Record<TaskStatus, { badge: string; bar: string; barFill: string }> = {
@@ -41,4 +41,16 @@ export function Avatar({ name, email, size = 24 }: { name: string; email: string
       {initials(name, email)}
     </span>
   );
+}
+
+/** Màu theo loại công việc — chỉ hiển thị màu, không ghi chữ trên ô việc. */
+export const CATEGORY_STYLE: Record<TaskCategory, { chip: string; fill: string; dot: string }> = {
+  task: { chip: 'bg-sky-100 border-sky-300 text-sky-950', fill: 'bg-sky-600', dot: 'bg-sky-500' },
+  meeting: { chip: 'bg-violet-100 border-violet-300 text-violet-950', fill: 'bg-violet-600', dot: 'bg-violet-500' },
+  data: { chip: 'bg-emerald-100 border-emerald-300 text-emerald-950', fill: 'bg-emerald-600', dot: 'bg-emerald-500' },
+  survey: { chip: 'bg-amber-100 border-amber-300 text-amber-950', fill: 'bg-amber-500', dot: 'bg-amber-500' }
+};
+
+export function CategoryDot({ category, size = 8 }: { category: TaskCategory; size?: number }) {
+  return <span aria-hidden className={`inline-block shrink-0 rounded-full ${CATEGORY_STYLE[category].dot}`} style={{ width: size, height: size }} />;
 }

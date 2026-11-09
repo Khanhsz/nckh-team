@@ -1,5 +1,6 @@
 import type { Database } from '../supabase/database.types';
 import type { Milestone, Paper, PaperStatus, Profile, Project, ProjectRole, Task, TaskStatus } from '../types';
+import { isTaskCategory } from '../types';
 
 type T = Database['public']['Tables'];
 
@@ -48,6 +49,7 @@ export const mapTask = (r: T['tasks']['Row']): Task => ({
   dependsOn: r.depends_on ?? [],
   progress: r.progress,
   status: r.status as TaskStatus,
+  category: isTaskCategory(r.category) ? r.category : 'task',
   createdBy: r.created_by,
   updatedAt: r.updated_at
 });
