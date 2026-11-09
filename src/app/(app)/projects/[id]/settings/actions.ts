@@ -86,3 +86,23 @@ export async function removeMemberAction(fd: FormData): Promise<void> {
   await supabase.rpc('remove_project_member', { p_project_id: str(fd, 'projectId'), p_user_id: str(fd, 'userId') });
   refresh();
 }
+
+export async function updateMilestoneAction(milestoneId: string, patch: { dueDate?: string; name?: string }): Promise<{ error?: string }> {
+  await requireUser();
+  const db: { due_date?: string; name?: string } = {};
+  if (patch.dueDate !== undefined) {
+    if (!isValidISODate(patch.dueDate)) return { error: 'Ngày không hợp lệ.' };
+    db.due_date = patch.dueDate;
+  }
+  if (patch.name !== undefined) {
+    const n = patch.name.trim();
+    if (!n) return { error: 'Tên mốc không được để trống.' };
+    db.name = n.slice(0, 200);
+  }
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('milestones').update(db).eq('id', milestoneId).select('id');
+  if (error) return { error: dbErrorMessage(error) };
+  if (!data?.length) return { error: 'Chỉ trưởng nhóm được sửa mốc.' };
+  refresh();
+  return {};
+}

@@ -82,31 +82,26 @@ export default async function GanttPage({
         </div>
       </div>
 
-      {tasks.length === 0 && milestones.length === 0 ? (
+      {tasks.length === 0 && milestones.length === 0 && project.role === 'viewer' ? (
         <div className="border border-dashed border-zinc-400 bg-white p-8 text-center text-sm text-zinc-600">
           Chưa có mốc hay công việc nào.{' '}
-          {isOwner ? (
-            <>
-              Thêm mốc ở{' '}
-              <Link className="underline" href={`/projects/${id}/settings`}>
-                Thành viên & cài đặt
-              </Link>{' '}
-              và công việc ở{' '}
-              <Link className="underline" href={`/projects/${id}/tasks`}>
-                Công việc
-              </Link>
-              .
-            </>
-          ) : (
-            'Trưởng nhóm sẽ lập kế hoạch sớm.'
-          )}
+          Trưởng nhóm sẽ lập kế hoạch sớm.
         </div>
       ) : (
-        <GanttChart project={project} milestones={milestones} tasks={tasks} members={members} zoom={zoom} />
+        <GanttChart
+          project={project}
+          milestones={milestones}
+          tasks={tasks}
+          members={members}
+          zoom={zoom}
+          role={project.role}
+          userId={user.id}
+          today={today}
+        />
       )}
 
       <p className="text-xs text-zinc-500">
-        Di chuột lên thanh để xem chi tiết. Mũi tên đỏ nét đứt: việc được xếp bắt đầu trước cả việc tiên quyết — nên xem lại kế hoạch.
+        Mũi tên đỏ nét đứt: việc được xếp bắt đầu trước cả việc tiên quyết — nên xem lại kế hoạch. Thêm/sửa mốc ở tab Thành viên & cài đặt.
       </p>
     </div>
   );
