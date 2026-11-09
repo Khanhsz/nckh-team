@@ -31,6 +31,7 @@ export default async function ProjectLayout({ children, params }: { children: Re
           <NavLink variant="tab" href={`/projects/${id}/gantt`}>Masterplan</NavLink>
           <NavLink variant="tab" href={`/projects/${id}/tasks`}>Công việc</NavLink>
           <NavLink variant="tab" href={`/projects/${id}/library`}>Thư viện bài đọc</NavLink>
+          <NavLink variant="tab" href={`/projects/${id}/ask`}>Hỏi thư viện</NavLink>
           <NavLink variant="tab" href={`/projects/${id}/writing`}>Bài viết</NavLink>
           <NavLink variant="tab" href={`/projects/${id}/settings`}>Thành viên & cài đặt</NavLink>
         </nav>

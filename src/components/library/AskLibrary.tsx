@@ -2,7 +2,7 @@
 
 import { Fragment, useEffect, useRef, useState, useTransition, type ReactNode } from 'react';
 import Link from 'next/link';
-import { askLibraryAction } from '@/app/(app)/projects/[id]/library/ask/actions';
+import { askLibraryAction } from '@/app/(app)/projects/[id]/ask/actions';
 import type { AskResult } from '@/lib/ai/ask';
 
 const SUGGESTIONS = [
