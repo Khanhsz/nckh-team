@@ -8,7 +8,7 @@ import { diffDays, isValidISODate } from '@/lib/dates';
 import { createTaskQuickAction, deleteTaskByIdAction, updateTaskAction } from '@/app/(app)/projects/[id]/tasks/actions';
 
 export type DialogState =
-  | { mode: 'create'; milestoneId: string | null; startDate: string; dueDate: string; assigneeId?: string | null; title?: string; category?: TaskCategory; parentId?: string | null }
+  | { mode: 'create'; milestoneId: string | null; startDate: string; dueDate: string; assigneeId?: string | null; title?: string; category?: TaskCategory; parentId?: string | null; coAssigneeIds?: string[] }
   | { mode: 'edit'; task: Task };
 
 const TEAM = '__team';
@@ -54,7 +54,7 @@ export function TaskDialog({
   const [category, setCategory] = useState<TaskCategory>(editing?.category ?? (state.mode === 'create' ? state.category ?? 'task' : 'task'));
   const [dependsOn, setDependsOn] = useState<string[]>(editing?.dependsOn ?? []);
   const [parentId, setParentId] = useState<string>(editing ? editing.parentId ?? '' : state.mode === 'create' ? state.parentId ?? '' : '');
-  const [coIds, setCoIds] = useState<string[]>(editing?.coAssigneeIds ?? []);
+  const [coIds, setCoIds] = useState<string[]>(editing?.coAssigneeIds ?? (state.mode === 'create' ? state.coAssigneeIds ?? [] : []));
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, start] = useTransition();
@@ -332,6 +332,7 @@ export function TaskDialog({
                       startDate: editing.startDate,
                       dueDate: editing.dueDate,
                       assigneeId: editing.isTeam ? null : editing.assigneeId,
+                      coAssigneeIds: editing.isTeam ? [] : editing.coAssigneeIds,
                       category: editing.category
                     })
                   }
