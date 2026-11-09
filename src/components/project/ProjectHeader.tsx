@@ -33,6 +33,7 @@ export function ProjectHeader({ project, canEdit, ownerName, memberCount, roleLa
   const imgSrc = coverImageSrc(project.id, parsed);
 
   const [picker, setPicker] = useState(false);
+  const imgRef = useRef<HTMLImageElement>(null);
   const [reposition, setReposition] = useState<{ y0: number; startY: number; dragging: boolean } | null>(null);
 
   const run = (fn: () => Promise<{ error?: string }>, onFail?: () => void) =>
@@ -63,14 +64,20 @@ export function ProjectHeader({ project, canEdit, ownerName, memberCount, roleLa
 
   // ---- Chỉnh vị trí ảnh: kéo dọc ----
   const onCoverDown = (e: RPE<HTMLDivElement>) => {
-    if (!reposition) return;
+    // Bấm vào nút (Lưu vị trí / Huỷ…) thì không bắt đầu kéo: nếu giữ con trỏ ở khung ảnh, cú bấm nút sẽ không tới được nút
+    if (!reposition || (e.target as HTMLElement).closest('button')) return;
+    e.preventDefault();
     e.currentTarget.setPointerCapture(e.pointerId);
     setReposition({ y0: e.clientY, startY: coverY, dragging: true });
   };
   const onCoverMove = (e: RPE<HTMLDivElement>) => {
     if (!reposition?.dragging) return;
-    const h = e.currentTarget.clientHeight || 160;
-    setCoverY(Math.max(0, Math.min(100, reposition.startY - ((e.clientY - reposition.y0) / h) * 100)));
+    // Ảnh chạy theo con trỏ: đổi % theo phần ảnh bị cắt (cao hơn khung bao nhiêu)
+    const box = e.currentTarget;
+    const img = imgRef.current;
+    const rendered = img && img.naturalWidth ? (box.clientWidth * img.naturalHeight) / img.naturalWidth : box.clientHeight * 2;
+    const overflow = Math.max(1, rendered - box.clientHeight);
+    setCoverY(Math.max(0, Math.min(100, reposition.startY - ((e.clientY - reposition.y0) / overflow) * 100)));
   };
   const onCoverUp = () => reposition && setReposition({ ...reposition, dragging: false });
   const saveReposition = () => {
@@ -96,7 +103,7 @@ export function ProjectHeader({ project, canEdit, ownerName, memberCount, roleLa
         >
           {imgSrc && (
             // eslint-disable-next-line @next/next/no-img-element
-            <img src={imgSrc} alt="" draggable={false} className="h-full w-full select-none object-cover" style={{ objectPosition: `50% ${coverY}%` }} />
+            <img ref={imgRef} src={imgSrc} alt="" draggable={false} className="h-full w-full select-none object-cover" style={{ objectPosition: `50% ${coverY}%` }} />
           )}
           {reposition && (
             <span className="pointer-events-none absolute left-1/2 top-1/2 -translate-x-1/2 -translate-y-1/2 rounded-full bg-black/55 px-3 py-1.5 text-xs text-white">
