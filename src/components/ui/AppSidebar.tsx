@@ -6,6 +6,7 @@ import { useCallback, useEffect, useState, type ReactNode } from 'react';
 import { signOutAction } from '@/lib/auth/actions';
 import { SIDEBAR_COOKIE } from '@/lib/ui-constants';
 import { Avatar } from './badges';
+import { Icon } from './Icon';
 
 interface Props {
   initialCollapsed: boolean;
@@ -59,8 +60,9 @@ export function AppSidebar({ initialCollapsed, projects, user }: Props) {
         href={href}
         title={collapsed ? title : undefined}
         aria-label={collapsed ? title : undefined}
-        className={`flex items-center gap-2 py-1.5 text-sm ${collapsed ? 'justify-center px-0' : 'px-3'} ${
-          active ? 'bg-zinc-900 text-white' : 'text-zinc-700 hover:bg-paper-2'
+        aria-current={active ? 'page' : undefined}
+        className={`flex h-9 items-center gap-3 rounded-full text-sm ${collapsed ? 'mx-auto w-10 justify-center' : 'px-4'} ${
+          active ? 'bg-primary-container font-medium text-on-primary-container' : 'text-ink-2 hover:bg-paper-2'
         }`}
       >
         {icon}
@@ -70,60 +72,74 @@ export function AppSidebar({ initialCollapsed, projects, user }: Props) {
   };
 
   return (
-    <aside
-      className={`flex shrink-0 flex-col border-r border-line bg-white transition-[width] duration-150 ${collapsed ? 'w-14' : 'w-60'}`}
-      aria-label="Điều hướng"
-    >
-      <div className={`flex items-center border-b border-line py-3 ${collapsed ? 'justify-center' : 'justify-between px-4'}`}>
-        {!collapsed && <p className="text-xs font-semibold uppercase tracking-widest text-accent">NCKH Team</p>}
+    <aside className={`flex shrink-0 flex-col transition-[width] duration-150 ${collapsed ? 'w-[68px]' : 'w-64'}`} aria-label="Điều hướng">
+      <div className={`flex h-16 items-center gap-2 ${collapsed ? 'justify-center' : 'px-3'}`}>
         <button
           onClick={toggle}
-          title={collapsed ? 'Mở sidebar (Ctrl/⌘ + B)' : 'Thu gọn sidebar (Ctrl/⌘ + B)'}
-          aria-label={collapsed ? 'Mở sidebar' : 'Thu gọn sidebar'}
+          title={collapsed ? 'Mở thanh bên (Ctrl/⌘ + B)' : 'Thu gọn thanh bên (Ctrl/⌘ + B)'}
+          aria-label={collapsed ? 'Mở thanh bên' : 'Thu gọn thanh bên'}
           aria-expanded={!collapsed}
-          className="flex h-6 w-6 items-center justify-center border border-line text-xs text-zinc-600 hover:bg-paper-2 hover:text-zinc-900"
+          className="flex h-10 w-10 items-center justify-center text-ink-2 hover:bg-paper-2"
         >
-          {collapsed ? '›' : '‹'}
+          <Icon name="menu" size={20} />
         </button>
+        {!collapsed && (
+          <Link href="/today" className="flex items-center gap-2 text-[19px] font-medium tracking-tight text-ink-2">
+            <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-[13px] font-semibold text-white">NC</span>
+            NCKH Team
+          </Link>
+        )}
       </div>
 
-      <nav className={`flex-1 space-y-4 overflow-y-auto overflow-x-hidden ${collapsed ? 'px-1.5 py-2' : 'p-2'}`}>
-        {item('/today', '/today', <span className="w-4 text-center">☀︎</span>, 'Hôm nay của tôi', 'Hôm nay của tôi')}
+      <div className={collapsed ? 'flex justify-center py-2' : 'px-3 py-2'}>
+        <Link
+          href="/projects/new"
+          title="Tạo dự án mới"
+          className={`flex items-center gap-3 rounded-2xl bg-white text-sm font-medium text-ink shadow-[0_1px_3px_rgba(60,64,67,.3),0_4px_8px_3px_rgba(60,64,67,.15)] hover:bg-paper-2 ${
+            collapsed ? 'h-12 w-12 justify-center' : 'h-14 w-fit pl-4 pr-6'
+          }`}
+        >
+          <Icon name="plus" size={22} className="text-primary" strokeWidth={2} />
+          {!collapsed && 'Dự án mới'}
+        </Link>
+      </div>
+
+      <nav className={`flex-1 space-y-4 overflow-y-auto overflow-x-hidden pb-3 pt-3 ${collapsed ? 'px-1' : 'px-3'}`}>
+        {item('/today', '/today', <Icon name="today" />, 'Hôm nay của tôi', 'Hôm nay của tôi')}
         <div>
-          {!collapsed && <p className="px-3 pb-1 text-[11px] font-semibold uppercase tracking-wider text-zinc-500">Dự án</p>}
-          {collapsed && <div className="mx-2 mb-2 border-t border-line" />}
+          {!collapsed && <p className="px-4 pb-1.5 text-sm font-medium text-ink-2">Dự án của tôi</p>}
+          {collapsed && <div className="mx-3 mb-2 border-t border-line" />}
           <div className="space-y-0.5">
             {projects.map((p) =>
               item(
                 `/projects/${p.id}/gantt`,
                 `/projects/${p.id}/`,
                 collapsed ? (
-                  <span className="font-mono text-[10px] font-semibold tracking-tight">{shortCode(p)}</span>
-                ) : p.code ? (
-                  <span className="font-mono text-[11px] opacity-70">{p.code}</span>
-                ) : null,
+                  <span className="text-[11px] font-semibold">{shortCode(p).slice(0, 4)}</span>
+                ) : (
+                  <span className="w-[18px] text-center text-[11px] font-semibold opacity-70">{shortCode(p).slice(0, 2)}</span>
+                ),
                 p.name,
-                p.code ? `${p.code} · ${p.name}` : p.name
+                p.code ? `${p.code}: ${p.name}` : p.name
               )
             )}
-            {item('/projects/new', '/projects/new', <span className="w-4 text-center">＋</span>, 'Dự án mới', 'Dự án mới')}
           </div>
         </div>
       </nav>
 
-      <div className={`flex items-center border-t border-line p-3 ${collapsed ? 'flex-col gap-2 px-1' : 'gap-2'}`}>
-        <span title={collapsed ? `${user.displayName} · ${user.email}` : undefined}>
-          <Avatar name={user.displayName} email={user.email} size={30} />
+      <div className={`flex items-center gap-2 p-3 ${collapsed ? 'flex-col px-1' : ''}`}>
+        <span title={collapsed ? `${user.displayName} (${user.email})` : undefined}>
+          <Avatar name={user.displayName} email={user.email} size={32} />
         </span>
         {!collapsed && (
           <div className="min-w-0 flex-1">
             <p className="truncate text-sm font-medium">{user.displayName}</p>
-            <p className="truncate text-[11px] text-zinc-500">{user.email}</p>
+            <p className="truncate text-xs text-ink-3">{user.email}</p>
           </div>
         )}
         <form action={signOutAction}>
-          <button className="text-xs text-zinc-500 hover:text-zinc-900" title="Đăng xuất">
-            {collapsed ? '⎋' : 'Thoát'}
+          <button className="flex h-9 w-9 items-center justify-center text-ink-3 hover:bg-paper-2 hover:text-ink" title="Đăng xuất" aria-label="Đăng xuất">
+            <Icon name="logout" />
           </button>
         </form>
       </div>

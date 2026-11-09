@@ -22,8 +22,9 @@ export function NavLink({
     return (
       <Link
         href={href}
-        className={`-mb-px border-b-2 px-3 py-2 text-sm ${
-          active ? 'border-zinc-900 font-semibold text-zinc-900' : 'border-transparent text-zinc-500 hover:text-zinc-900'
+        aria-current={active ? 'page' : undefined}
+        className={`whitespace-nowrap rounded-full px-4 py-1.5 text-sm ${
+          active ? 'bg-primary-container font-medium text-on-primary-container' : 'text-ink-2 hover:bg-paper-2'
         }`}
       >
         {children}
@@ -34,7 +35,7 @@ export function NavLink({
   return (
     <Link
       href={href}
-      className={`block px-3 py-1.5 text-sm ${active ? 'bg-zinc-900 text-white' : 'text-zinc-700 hover:bg-paper-2'}`}
+      className={`block rounded-full px-4 py-1.5 text-sm ${active ? 'bg-primary-container font-medium text-on-primary-container' : 'text-ink-2 hover:bg-paper-2'}`}
     >
       {children}
     </Link>

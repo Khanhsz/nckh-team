@@ -12,10 +12,10 @@ export default async function InvitePage({ params }: { params: Promise<{ token: 
     return (
       <AuthShell title="Bạn được mời tham gia một dự án" subtitle="Đăng nhập hoặc tạo tài khoản miễn phí để nhận lời mời.">
         <div className="flex gap-2">
-          <Link href={`/signup?next=${next}`} className="flex-1 bg-zinc-900 px-3 py-2 text-center text-sm font-medium text-white hover:bg-zinc-700">
+          <Link href={`/signup?next=${next}`} className="flex-1 bg-primary px-3 py-2 text-center text-sm font-medium text-white hover:bg-primary-hover">
             Tạo tài khoản
           </Link>
-          <Link href={`/login?next=${next}`} className="flex-1 border border-zinc-900 px-3 py-2 text-center text-sm font-medium hover:bg-paper-2">
+          <Link href={`/login?next=${next}`} className="flex-1 border border-ink-3/50 text-primary px-3 py-2 text-center text-sm font-medium hover:bg-paper-2">
             Đăng nhập
           </Link>
         </div>

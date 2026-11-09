@@ -1,3 +1,4 @@
+import { Icon } from '@/components/ui/Icon';
 import type { TaskCategory, TaskStatus } from '@/lib/types';
 import { TASK_STATUS_LABEL } from '@/lib/types';
 
@@ -45,21 +46,22 @@ export function Avatar({ name, email, size = 24 }: { name: string; email: string
 
 /** Màu theo loại công việc — chỉ hiển thị màu, không ghi chữ trên ô việc. */
 export const CATEGORY_STYLE: Record<TaskCategory, { chip: string; fill: string; dot: string; sub: string; edge: string }> = {
-  task: { chip: 'bg-sky-100 border-sky-300 text-sky-950', fill: 'bg-sky-600', dot: 'bg-sky-500', sub: 'bg-white border-sky-400 text-sky-950', edge: 'border-sky-500' },
-  meeting: { chip: 'bg-violet-100 border-violet-300 text-violet-950', fill: 'bg-violet-600', dot: 'bg-violet-500', sub: 'bg-white border-violet-400 text-violet-950', edge: 'border-violet-500' },
-  data: { chip: 'bg-emerald-100 border-emerald-300 text-emerald-950', fill: 'bg-emerald-600', dot: 'bg-emerald-500', sub: 'bg-white border-emerald-400 text-emerald-950', edge: 'border-emerald-500' },
-  survey: { chip: 'bg-amber-100 border-amber-300 text-amber-950', fill: 'bg-amber-500', dot: 'bg-amber-500', sub: 'bg-white border-amber-400 text-amber-950', edge: 'border-amber-500' }
+  // Bảng màu sự kiện kiểu Google Calendar: nền nhạt, chữ đậm cùng tông
+  task: { chip: 'bg-[#d3e3fd] border-transparent text-[#041e49]', fill: 'bg-[#0b57d0]', dot: 'bg-[#0b57d0]', sub: 'bg-white border-[#a8c7fa] text-[#041e49]', edge: 'border-[#0b57d0]' },
+  meeting: { chip: 'bg-[#f3e1fa] border-transparent text-[#3b0a52]', fill: 'bg-[#8e24aa]', dot: 'bg-[#8e24aa]', sub: 'bg-white border-[#dcb4ec] text-[#3b0a52]', edge: 'border-[#8e24aa]' },
+  data: { chip: 'bg-[#c4eed0] border-transparent text-[#072711]', fill: 'bg-[#188038]', dot: 'bg-[#188038]', sub: 'bg-white border-[#8fd5a6] text-[#072711]', edge: 'border-[#188038]' },
+  survey: { chip: 'bg-[#ffe9b0] border-transparent text-[#3d2e00]', fill: 'bg-[#f9ab00]', dot: 'bg-[#f9ab00]', sub: 'bg-white border-[#fcd36b] text-[#3d2e00]', edge: 'border-[#f9ab00]' }
 };
 
 export function CategoryDot({ category, size = 8 }: { category: TaskCategory; size?: number }) {
   return <span aria-hidden className={`inline-block shrink-0 rounded-full ${CATEGORY_STYLE[category].dot}`} style={{ width: size, height: size }} />;
 }
 
-/** Ký hiệu subtask: ↳ + chấm rỗng viền theo màu loại (khác chấm đặc của việc chính). */
+/** Ký hiệu subtask: mũi tên con + chấm rỗng viền theo màu loại (khác chấm đặc của việc chính). */
 export function SubtaskMark({ category, size = 8 }: { category: TaskCategory; size?: number }) {
   return (
-    <span aria-hidden className="inline-flex shrink-0 items-center gap-0.5 text-zinc-400">
-      <span className="text-[11px] leading-none">↳</span>
+    <span aria-hidden className="inline-flex shrink-0 items-center gap-0.5 text-ink-3">
+      <Icon name="subtask" size={11} strokeWidth={2.2} />
       <span className={`inline-block rounded-full border-2 bg-white ${CATEGORY_STYLE[category].edge}`} style={{ width: size, height: size }} />
     </span>
   );

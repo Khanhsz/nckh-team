@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import { attachLinkAction, type DocFormState } from '@/app/(app)/projects/[id]/writing/actions';
 import { FormMessage, SubmitButton } from '@/components/ui/FormBits';
 
-const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-800';
+const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-primary';
 
 export function AttachLinkForm({ projectId }: { projectId: string }) {
   const [state, action] = useActionState<DocFormState, FormData>(attachLinkAction, {});

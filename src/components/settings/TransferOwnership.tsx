@@ -69,7 +69,7 @@ export function TransferOwnership({
       <div className="flex flex-wrap items-end gap-2">
         <div>
           <label className="mb-1 block text-xs font-medium">Trao cho</label>
-          <select value={to} onChange={(e) => setTo(e.target.value)} className="border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-800">
+          <select value={to} onChange={(e) => setTo(e.target.value)} className="border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-primary">
             <option value="">— Chọn thành viên —</option>
             {candidates.map((m) => (
               <option key={m.userId} value={m.userId}>
@@ -81,9 +81,9 @@ export function TransferOwnership({
         </div>
         <div className="min-w-48 flex-1">
           <label className="mb-1 block text-xs font-medium">Lời nhắn (tuỳ chọn)</label>
-          <input value={message} onChange={(e) => setMessage(e.target.value)} maxLength={500} className="w-full border border-line px-2 py-1.5 text-sm outline-none focus:border-zinc-800" />
+          <input value={message} onChange={(e) => setMessage(e.target.value)} maxLength={500} className="w-full border border-line px-2 py-1.5 text-sm outline-none focus:border-primary" />
         </div>
-        <button onClick={send} disabled={busy || !to} className="bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-40">
+        <button onClick={send} disabled={busy || !to} className="bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-40">
           Gửi lời mời
         </button>
       </div>

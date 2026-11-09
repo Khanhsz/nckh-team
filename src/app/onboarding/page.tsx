@@ -15,21 +15,21 @@ export default async function OnboardingPage() {
       <div className="w-full max-w-lg space-y-6">
         <ol className="flex gap-2 text-xs">
           {['Hồ sơ', projects.length ? 'Vào dự án' : 'Tạo dự án hoặc nhận lời mời'].map((s, i) => (
-            <li key={s} className={`flex-1 border-t-2 pt-2 ${i === 0 ? 'border-zinc-900 font-semibold' : 'border-line text-zinc-500'}`}>
+            <li key={s} className={`flex-1 border-t-2 pt-2 ${i === 0 ? 'border-ink-3/50 text-primary font-semibold' : 'border-line text-zinc-500'}`}>
               {i + 1}. {s}
             </li>
           ))}
         </ol>
 
         <div>
-          <h1 className="text-2xl font-semibold">Chào mừng tới NCKH Team 👋</h1>
+          <h1 className="text-2xl font-semibold">Chào mừng tới NCKH Team</h1>
           <p className="mt-1 text-sm text-zinc-600">Cho nhóm biết bạn là ai — thông tin này chỉ hiện với thành viên cùng dự án.</p>
         </div>
 
         <OnboardingForm defaultName={user.profile?.displayName ?? ''} />
 
         {projects.length > 0 && (
-          <div className="border border-line bg-white p-4 text-sm">
+          <div className="rounded-2xl border border-line bg-white p-4 text-sm">
             <p className="font-medium">Bạn đã là thành viên của</p>
             <ul className="mt-2 space-y-1">
               {projects.map((p) => (

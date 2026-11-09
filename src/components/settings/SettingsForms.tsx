@@ -13,7 +13,7 @@ import {
 } from '@/app/(app)/projects/[id]/settings/actions';
 import { FormMessage, SubmitButton } from '@/components/ui/FormBits';
 
-const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-800';
+const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-primary';
 const label = 'mb-1 block text-xs font-medium';
 
 export function ProjectInfoForm({
@@ -114,7 +114,7 @@ export function InviteBox({ projectId }: { projectId: string }) {
                   setCopied(false);
                 }
               }}
-              className="shrink-0 border border-zinc-900 px-3 text-xs font-medium hover:bg-white"
+              className="shrink-0 border border-ink-3/50 text-primary px-3 text-xs font-medium hover:bg-white"
             >
               {copied ? 'Đã copy ✓' : 'Copy'}
             </button>

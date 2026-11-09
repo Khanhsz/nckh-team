@@ -8,7 +8,7 @@ import { createTaskAction } from '@/app/(app)/projects/[id]/tasks/actions';
 import { FormMessage, SubmitButton } from '@/components/ui/FormBits';
 import { AssigneePicker, type AssigneeValue } from './AssigneePicker';
 
-const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-800';
+const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-primary';
 
 export function NewTaskForm({
   projectId,
@@ -52,14 +52,14 @@ export function NewTaskForm({
 
   if (!open) {
     return (
-      <button onClick={() => setOpen(true)} className="bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700">
+      <button onClick={() => setOpen(true)} className="bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover">
         + Thêm công việc / subtask
       </button>
     );
   }
 
   return (
-    <form ref={formRef} id="new-task" action={action} className="w-full space-y-3 border border-line bg-white p-4">
+    <form ref={formRef} id="new-task" action={action} className="w-full space-y-3 rounded-2xl border border-line bg-white p-4">
       <input type="hidden" name="projectId" value={projectId} />
       <div className="flex flex-wrap items-center gap-2 border-b border-line pb-3">
         <label className="text-xs font-medium">Thuộc công việc</label>
@@ -80,7 +80,7 @@ export function NewTaskForm({
           <option value="">— Không (đây là công việc chính) —</option>
           {parents.map((t) => (
             <option key={t.id} value={t.id}>
-              ↳ subtask của: {t.title}
+              Subtask của: {t.title}
             </option>
           ))}
         </select>

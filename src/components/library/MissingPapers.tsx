@@ -92,14 +92,14 @@ export function MissingPapers({
 
   return (
     <div className="space-y-3">
-      <div className="flex flex-wrap items-center gap-2 border border-line bg-white px-3 py-2 text-xs">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-white px-3 py-2 text-xs">
         <span className="text-zinc-600">
           Đã có danh mục tham khảo của <b className="text-zinc-900">{stats.withRefs}</b>/{stats.total} bài · <b className="text-zinc-900">{stats.totalRefs.toLocaleString('vi-VN')}</b> tài liệu được trích
           {stats.noDoi > 0 && <> · {stats.noDoi} bài chưa có DOI (không tra được)</>}
           {stats.noRefsDeposited > 0 && <> · {stats.noRefsDeposited} bài NXB không công bố danh mục</>}
         </span>
         {canEdit && pending.length > 0 && !running && (
-          <button onClick={run} className="bg-zinc-900 px-3 py-1.5 font-medium text-white hover:bg-zinc-700">
+          <button onClick={run} className="bg-primary px-3 py-1.5 font-medium text-white hover:bg-primary-hover">
             ↓ Lấy danh mục tham khảo ({pending.length} bài)
           </button>
         )}
@@ -112,12 +112,12 @@ export function MissingPapers({
           </span>
         )}
         {canEdit && unresolved > 0 && !running && (
-          <button onClick={resolve} disabled={busy} className="border border-zinc-900 px-2.5 py-1 font-medium hover:bg-paper-2 disabled:opacity-50">
+          <button onClick={resolve} disabled={busy} className="border border-ink-3/50 text-primary px-2.5 py-1 font-medium hover:bg-paper-2 disabled:opacity-50">
             ↻ Bổ sung thông tin ({unresolved})
           </button>
         )}
         {msg && <span className="text-zinc-700">{msg}</span>}
-        <span className="ml-auto text-[11px] text-zinc-400">Nguồn: Crossref (miễn phí). Bài không có DOI cần tra DOI trước (tab Bảng → ★ Tra độ tin cậy).</span>
+        <span className="ml-auto text-[11px] text-zinc-400">Nguồn: Crossref (miễn phí). Bài không có DOI cần tra DOI trước (tab Bảng, nút Tra độ tin cậy).</span>
       </div>
 
       {suggestions.length === 0 ? (
@@ -127,7 +127,7 @@ export function MissingPapers({
             : 'Chưa thấy tài liệu nào được từ 2 bài trở lên cùng trích mà nhóm chưa có. Thêm bài vào thư viện hoặc lấy danh mục cho các bài còn lại.'}
         </div>
       ) : (
-        <div className="border border-line bg-white">
+        <div className="rounded-2xl border border-line bg-white">
           <div className="flex flex-wrap items-center gap-3 border-b border-line px-3 py-2 text-xs text-zinc-600">
             <span>
               <b className="text-zinc-900">{rows.length}</b> tài liệu nhóm <b>chưa có</b>, được ít nhất

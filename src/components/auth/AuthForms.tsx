@@ -16,7 +16,7 @@ import { inputCls, labelCls } from './AuthShell';
 export function SignInForm({ next }: { next: string }) {
   const [state, action] = useActionState<FormState, FormData>(signInAction, {});
   return (
-    <form action={action} className="space-y-3 border border-line bg-white p-4">
+    <form action={action} className="space-y-3 rounded-2xl border border-line bg-white p-4">
       <input type="hidden" name="next" value={next} />
       <div>
         <label className={labelCls} htmlFor="email">Email</label>
@@ -41,7 +41,7 @@ export function SignUpForm({ next }: { next: string }) {
   const [state, action] = useActionState<FormState, FormData>(signUpAction, {});
   if (state.ok) return <FormMessage message={state.message} />;
   return (
-    <form action={action} className="space-y-3 border border-line bg-white p-4">
+    <form action={action} className="space-y-3 rounded-2xl border border-line bg-white p-4">
       <input type="hidden" name="next" value={next} />
       <div>
         <label className={labelCls} htmlFor="fullName">Họ và tên</label>
@@ -69,7 +69,7 @@ export function ForgotPasswordForm() {
   const [state, action] = useActionState<FormState, FormData>(forgotPasswordAction, {});
   if (state.ok) return <FormMessage message={state.message} />;
   return (
-    <form action={action} className="space-y-3 border border-line bg-white p-4">
+    <form action={action} className="space-y-3 rounded-2xl border border-line bg-white p-4">
       <div>
         <label className={labelCls} htmlFor="email">Email đã đăng ký</label>
         <input id="email" name="email" type="email" autoComplete="email" required className={inputCls} />
@@ -83,7 +83,7 @@ export function ForgotPasswordForm() {
 export function UpdatePasswordForm() {
   const [state, action] = useActionState<FormState, FormData>(updatePasswordAction, {});
   return (
-    <form action={action} className="space-y-3 border border-line bg-white p-4">
+    <form action={action} className="space-y-3 rounded-2xl border border-line bg-white p-4">
       <div>
         <label className={labelCls} htmlFor="password">Mật khẩu mới</label>
         <input id="password" name="password" type="password" autoComplete="new-password" minLength={8} required className={inputCls} />
@@ -101,7 +101,7 @@ export function UpdatePasswordForm() {
 export function OnboardingForm({ defaultName }: { defaultName: string }) {
   const [state, action] = useActionState<FormState, FormData>(completeOnboardingAction, {});
   return (
-    <form action={action} className="space-y-3 border border-line bg-white p-4">
+    <form action={action} className="space-y-3 rounded-2xl border border-line bg-white p-4">
       <div>
         <label className={labelCls} htmlFor="displayName">
           Họ và tên <span className="text-rose-600">*</span>

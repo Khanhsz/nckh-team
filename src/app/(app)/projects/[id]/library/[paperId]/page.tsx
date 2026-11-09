@@ -58,13 +58,13 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
         </p>
         <div className="flex flex-wrap items-center gap-3">
           {paper.driveWebLink && (
-            <a href={paper.driveWebLink} target="_blank" rel="noreferrer" className="border border-zinc-900 px-3 py-1.5 text-sm font-medium hover:bg-paper-2">
+            <a href={paper.driveWebLink} target="_blank" rel="noreferrer" className="border border-ink-3/50 text-primary px-3 py-1.5 text-sm font-medium hover:bg-paper-2">
               Mở PDF trên Drive ↗
             </a>
           )}
           <CitationExport projectId={id} count={1} query={`ids=${paper.id}`} />
           {canEdit && geminiConfigured() && (
-            <ExtractOneButton paperId={paper.id} label={hasResult ? 'Trích xuất lại (xoá trạng thái duyệt)' : '✦ Trích xuất bằng AI'} />
+            <ExtractOneButton paperId={paper.id} label={hasResult ? 'Trích xuất lại (xoá trạng thái duyệt)' : 'Trích xuất bằng AI'} />
           )}
         </div>
         {paper.status === 'error' && paper.error && <p className="text-sm text-rose-700">{paper.error}</p>}
@@ -80,8 +80,8 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
         )}
       </header>
 
-      <section className="space-y-2 border border-line bg-white p-4">
-        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Độ tin cậy & thông tin xuất bản</h3>
+      <section className="space-y-2 rounded-2xl border border-line bg-white p-4">
+        <h3 className="text-xs font-semibold  text-zinc-500">Độ tin cậy & thông tin xuất bản</h3>
         <div className="grid gap-4 sm:grid-cols-2">
           <CredibilityCell cred={cred} pub={paper.pub} detailed catalogReady={catalog.sjr.count > 0} />
           <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">

@@ -19,7 +19,7 @@ export function TransferResponse({ transferId, compact }: { transferId: string; 
   };
   return (
     <div className="flex flex-wrap items-center gap-2">
-      <button onClick={() => respond(true)} disabled={pending} className={`bg-zinc-900 font-medium text-white hover:bg-zinc-700 disabled:opacity-50 ${compact ? 'px-2.5 py-1 text-xs' : 'px-4 py-2 text-sm'}`}>
+      <button onClick={() => respond(true)} disabled={pending} className={`bg-primary font-medium text-white hover:bg-primary-hover disabled:opacity-50 ${compact ? 'px-2.5 py-1 text-xs' : 'px-4 py-2 text-sm'}`}>
         {pending ? '…' : 'Chấp nhận'}
       </button>
       <button onClick={() => respond(false)} disabled={pending} className={`border border-line hover:bg-paper-2 disabled:opacity-50 ${compact ? 'px-2.5 py-1 text-xs' : 'px-4 py-2 text-sm'}`}>

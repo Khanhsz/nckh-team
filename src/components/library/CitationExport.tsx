@@ -1,5 +1,6 @@
 'use client';
 
+import { Icon } from '@/components/ui/Icon';
 import { useState } from 'react';
 
 /** Nút sao chép / tải danh mục tài liệu tham khảo (APA 7, BibTeX, RIS) */
@@ -41,11 +42,11 @@ export function CitationExport({ projectId, query, count, compact }: { projectId
         className={`cursor-pointer list-none border border-line bg-white text-xs hover:bg-paper-2 ${compact ? 'px-2 py-1' : 'px-2.5 py-1.5'}`}
         title="Danh mục tài liệu tham khảo của các bài đang hiển thị"
       >
-        ⤓ Trích dẫn ({count})
+        <Icon name="download" size={15} className="inline" /> Trích dẫn ({count})
       </summary>
-      <div className="absolute right-0 z-50 mt-1 w-72 space-y-1 border border-zinc-900 bg-white p-2 text-xs shadow-xl">
+      <div className="absolute right-0 z-50 mt-1 w-72 space-y-1 rounded-2xl border border-line bg-white p-2 text-xs shadow-xl">
         <button disabled={busy} onClick={copyApa} className="block w-full px-2 py-1.5 text-left font-medium hover:bg-paper-2 disabled:opacity-50">
-          ⧉ Sao chép APA 7 (dán vào Word / Docs)
+          <Icon name="copy" size={15} className="inline" /> Sao chép APA 7 (dán vào Word / Docs)
         </button>
         <a href={url('apa-html')} className="block px-2 py-1.5 hover:bg-paper-2">
           Tải APA 7 (.html — mở bằng Word)

@@ -14,8 +14,8 @@ export default async function TransferPage({ params }: { params: Promise<{ id: s
   return (
     <div className="mx-auto max-w-lg space-y-4 p-8">
       {invite ? (
-        <section className="space-y-3 border border-line bg-white p-5">
-          <p className="text-xs uppercase tracking-wider text-zinc-500">Lời mời nhận quyền trưởng nhóm</p>
+        <section className="space-y-3 rounded-2xl border border-line bg-white p-5">
+          <p className="text-xs  text-zinc-500">Lời mời nhận quyền trưởng nhóm</p>
           <h1 className="text-lg font-semibold">
             {invite.project_code && <span className="mr-2 font-mono text-sm text-zinc-500">{invite.project_code}</span>}
             {invite.project_name}
@@ -34,7 +34,7 @@ export default async function TransferPage({ params }: { params: Promise<{ id: s
           <TransferResponse transferId={invite.id} />
         </section>
       ) : (
-        <section className="space-y-2 border border-line bg-white p-5 text-sm">
+        <section className="space-y-2 rounded-2xl border border-line bg-white p-5 text-sm">
           <p className="font-medium">
             {row?.status === 'accepted'
               ? 'Lời mời này đã được chấp nhận.'

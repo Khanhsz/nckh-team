@@ -1,5 +1,6 @@
 'use client';
 
+import { Icon } from '@/components/ui/Icon';
 import { useEffect, useLayoutEffect, useRef, useState } from 'react';
 import type { Member } from '@/lib/types';
 
@@ -19,7 +20,7 @@ export const sameAssignees = (a: AssigneeValue, b: AssigneeValue) => a.team === 
 /**
  * Dropdown chọn nhiều người phụ trách.
  * - Tick nhiều người; người được tick đầu tiên là người chính (bấm ★ để đổi).
- * - "👥 Cả nhóm" loại trừ các lựa chọn khác (ẩn khi allowTeam = false, vd. subtask).
+ * - "Cả nhóm" loại trừ các lựa chọn khác (ẩn khi allowTeam = false, vd. subtask).
  * - onClose được gọi khi đóng dropdown (dùng để lưu một lần).
  */
 export function AssigneePicker({
@@ -104,7 +105,7 @@ export function AssigneePicker({
   const makePrimary = (id: string) => onChange({ team: false, ids: [id, ...value.ids.filter((x) => x !== id)] });
 
   const label = value.team
-    ? '👥 Cả nhóm'
+    ? 'Cả nhóm'
     : value.ids.length === 0
       ? '— Chưa giao —'
       : value.ids.length === 1
@@ -122,7 +123,7 @@ export function AssigneePicker({
         aria-haspopup="listbox"
         aria-expanded={open}
         onClick={() => (open ? close() : setOpen(true))}
-        className={`flex w-full items-center gap-1 border border-line bg-white text-left outline-none focus:border-zinc-800 disabled:bg-paper-2 disabled:text-zinc-500 ${
+        className={`flex w-full items-center gap-1 border border-line bg-white text-left outline-none focus:border-primary disabled:bg-paper-2 disabled:text-zinc-500 ${
           compact ? 'max-w-44 px-1.5 py-1 text-xs' : 'px-2 py-1.5 text-sm'
         }`}
       >
@@ -135,13 +136,13 @@ export function AssigneePicker({
           ref={panelRef}
           role="listbox"
           aria-multiselectable="true"
-          className="fixed z-[60] max-h-80 overflow-y-auto border border-zinc-900 bg-white p-1 text-sm shadow-xl"
+          className="fixed z-[60] max-h-80 overflow-y-auto rounded-2xl border border-line bg-white p-1 text-sm shadow-xl"
           style={{ left: pos.left, top: pos.top, width: pos.width }}
         >
           {allowTeam && (
             <label className={`flex cursor-pointer items-center gap-2 px-2 py-1.5 hover:bg-paper-2 ${value.team ? 'font-semibold' : ''}`}>
               <input type="checkbox" checked={value.team} onChange={() => onChange(value.team ? { team: false, ids: [] } : { team: true, ids: [] })} />
-              👥 Cả nhóm
+              <Icon name="team" size={15} className="text-primary" /> Cả nhóm
               <span className="ml-auto text-[10px] font-normal text-zinc-400">chia subtask</span>
             </label>
           )}
@@ -161,7 +162,7 @@ export function AssigneePicker({
                 {on && value.ids.length > 1 &&
                   (idx === 0 ? (
                     <span className="shrink-0 text-[10px] text-amber-700" title="Người phụ trách chính">
-                      ★ chính
+                      <Icon name="star" size={11} strokeWidth={2.2} className="inline" /> chính
                     </span>
                   ) : (
                     <button
@@ -170,7 +171,7 @@ export function AssigneePicker({
                       className="shrink-0 text-[10px] text-zinc-400 hover:text-amber-700"
                       title="Đặt làm người chính"
                     >
-                      ☆
+                      <Icon name="star" size={13} />
                     </button>
                   ))}
               </div>

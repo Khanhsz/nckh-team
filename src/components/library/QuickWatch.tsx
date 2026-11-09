@@ -1,5 +1,6 @@
 'use client';
 
+import { Icon } from '@/components/ui/Icon';
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { quickWatchAction } from '@/app/(app)/projects/[id]/settings/actions';
@@ -21,7 +22,7 @@ export function QuickWatch({ projectId, publisher, journal }: { projectId: strin
   if (!pub && !journal) return null;
   return (
     <div className="flex flex-wrap items-center gap-2 text-xs">
-      <span className="text-zinc-500">👁 Thêm vào danh sách theo dõi của nhóm:</span>
+      <span className="flex items-center gap-1 text-ink-3"><Icon name="eye" size={14} />Thêm vào danh sách theo dõi của nhóm:</span>
       {pub && (
         <button disabled={pending} onClick={() => add('publisher', pub)} className="border border-yellow-400 bg-yellow-50 px-2 py-0.5 hover:bg-yellow-100 disabled:opacity-50">
           NXB “{pub}”

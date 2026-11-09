@@ -1,9 +1,10 @@
 import type { Metadata } from 'next';
 import type { ReactNode } from 'react';
-import { Inter } from 'next/font/google';
+import { Be_Vietnam_Pro } from 'next/font/google';
 import './globals.css';
 
-const inter = Inter({ subsets: ['latin', 'vietnamese'], variable: '--font-inter' });
+// Be Vietnam Pro: thiết kế cho tiếng Việt — dấu rõ, cân đối ở cỡ chữ nhỏ
+const appFont = Be_Vietnam_Pro({ subsets: ['latin', 'vietnamese'], weight: ['400', '500', '600', '700'], variable: '--font-app' });
 
 export const metadata: Metadata = {
   title: 'NCKH Team',
@@ -13,7 +14,7 @@ export const metadata: Metadata = {
 export default function RootLayout({ children }: { children: ReactNode }) {
   return (
     <html lang="vi">
-      <body className={`${inter.variable} font-sans antialiased`}>{children}</body>
+      <body className={`${appFont.variable} font-sans antialiased`}>{children}</body>
     </html>
   );
 }

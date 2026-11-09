@@ -1,5 +1,6 @@
 'use client';
 
+import { Icon } from '@/components/ui/Icon';
 import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 
 /**
@@ -43,12 +44,12 @@ export function LibraryFrame({ toolbar, children }: { toolbar: ReactNode; childr
           onClick={() => setFull((f) => !f)}
           title={full ? 'Thoát toàn màn hình (Esc)' : 'Xem bảng toàn màn hình'}
           aria-label={full ? 'Thoát toàn màn hình' : 'Toàn màn hình'}
-          className="border border-line bg-white px-2 py-1 text-sm leading-5 hover:bg-paper-2"
+          className="flex h-9 w-9 items-center justify-center rounded-full border border-line bg-white text-ink-2 hover:bg-paper-2"
         >
-          {full ? '✕' : '⛶'}
+          <Icon name={full ? 'close' : 'expand'} size={18} />
         </button>
       </div>
-      <div className="thin-scroll min-h-0 flex-1 overflow-auto border border-line bg-white">{children}</div>
+      <div className="thin-scroll min-h-0 flex-1 overflow-auto rounded-2xl border border-line bg-white">{children}</div>
     </div>
   );
 }

@@ -179,14 +179,14 @@ export function RelationMap({
   return (
     <div className="space-y-3">
       {/* Thanh điều khiển */}
-      <div className="flex flex-wrap items-center gap-2 border border-line bg-white px-3 py-2 text-xs">
+      <div className="flex flex-wrap items-center gap-2 rounded-2xl border border-line bg-white px-3 py-2 text-xs">
         <span className="text-zinc-600">
           Đã phân tích <b className="text-zinc-900">{data.analyzed}</b>/{data.extracted} bài đã trích xuất · <b className="text-zinc-900">{data.nodes.length}</b> biến ·{' '}
           <b className="text-zinc-900">{data.edges.length}</b> quan hệ
         </span>
         {canEdit && aiReady && pending.length > 0 && !running && (
-          <button onClick={runQueue} className="bg-zinc-900 px-3 py-1.5 font-medium text-white hover:bg-zinc-700">
-            ✦ Phân tích giả thuyết ({pending.length} bài)
+          <button onClick={runQueue} className="bg-primary px-3 py-1.5 font-medium text-white hover:bg-primary-hover">
+            Phân tích giả thuyết ({pending.length} bài)
           </button>
         )}
         {running && (
@@ -198,8 +198,8 @@ export function RelationMap({
           </span>
         )}
         {canEdit && aiReady && data.edges.length > 0 && !running && (
-          <button onClick={normalize} disabled={busy} className="border border-zinc-900 px-2.5 py-1 font-medium hover:bg-paper-2 disabled:opacity-50" title="AI gộp các tên biến đồng nghĩa giữa các bài">
-            {busy ? 'Đang gộp…' : `⇄ Gộp tên biến${unmapped ? ` (${unmapped} chưa gộp)` : ''}`}
+          <button onClick={normalize} disabled={busy} className="border border-ink-3/50 text-primary px-2.5 py-1 font-medium hover:bg-paper-2 disabled:opacity-50" title="AI gộp các tên biến đồng nghĩa giữa các bài">
+            {busy ? 'Đang gộp…' : `Gộp tên biến${unmapped ? ` (${unmapped} chưa gộp)` : ''}`}
           </button>
         )}
         {msg && <span className="text-zinc-700">{msg}</span>}
@@ -218,8 +218,8 @@ export function RelationMap({
           <div className="grid gap-2 md:grid-cols-3">
             {(
               [
-                ['solid', '✓ Quan hệ đã vững', '≥ 3 bài, đa số ủng hộ — có thể dùng làm nền cho giả thuyết', 'border-emerald-300 bg-emerald-50 text-emerald-900', insights.solid],
-                ['conflict', '⚡ Kết quả mâu thuẫn', 'Có bài ủng hộ, có bài bác bỏ (hoặc ngược chiều) — đáng để kiểm định lại / tìm biến điều tiết', 'border-amber-300 bg-amber-50 text-amber-900', insights.conflict],
+                ['solid', 'Quan hệ đã vững', '≥ 3 bài, đa số ủng hộ, có thể dùng làm nền cho giả thuyết', 'border-emerald-300 bg-emerald-50 text-emerald-900', insights.solid],
+                ['conflict', 'Kết quả mâu thuẫn', 'Có bài ủng hộ, có bài bác bỏ (hoặc ngược chiều), đáng để kiểm định lại / tìm biến điều tiết', 'border-amber-300 bg-amber-50 text-amber-900', insights.conflict],
                 ['thin', '◌ Ít bằng chứng', 'Quan hệ trực tiếp mới có 1 bài — khoảng trống tiềm năng', 'border-sky-300 bg-sky-50 text-sky-900', insights.thin]
               ] as const
             ).map(([key, title, hint, cls, list]) => (
@@ -246,7 +246,7 @@ export function RelationMap({
           </div>
 
           {/* Sơ đồ */}
-          <div className="border border-line bg-white">
+          <div className="rounded-2xl border border-line bg-white">
             <div className="flex flex-wrap items-center gap-3 border-b border-line px-3 py-1.5 text-[11px] text-zinc-600">
               <label className="flex items-center gap-1.5">
                 Hiện
@@ -320,7 +320,7 @@ export function RelationMap({
 
           {/* Biến đang chọn: đổi tên / gộp */}
           {selected && (
-            <div className="flex flex-wrap items-center gap-2 border border-zinc-900 bg-white px-3 py-2 text-xs">
+            <div className="flex flex-wrap items-center gap-2 border border-ink-3/50 text-primary bg-white px-3 py-2 text-xs">
               <span>
                 Đang xem: <b>{selected}</b>
               </span>
@@ -344,7 +344,7 @@ export function RelationMap({
                         <option key={n.name} value={n.name} />
                       ))}
                   </datalist>
-                  <button onClick={doRename} disabled={busy || !renameTo.trim()} className="bg-zinc-900 px-2 py-1 font-medium text-white disabled:opacity-40">
+                  <button onClick={doRename} disabled={busy || !renameTo.trim()} className="bg-primary px-2 py-1 font-medium text-white disabled:opacity-40">
                     Lưu
                   </button>
                 </span>
@@ -353,7 +353,7 @@ export function RelationMap({
           )}
 
           {/* Bảng quan hệ */}
-          <div className="border border-line bg-white">
+          <div className="rounded-2xl border border-line bg-white">
             <div className="flex flex-wrap items-center gap-1 border-b border-line px-3 py-1.5 text-xs">
               {(
                 [
@@ -365,7 +365,7 @@ export function RelationMap({
                   ['thin', '1 bài']
                 ] as const
               ).map(([k, l]) => (
-                <button key={k} onClick={() => setStatusFilter(k)} className={`px-2 py-1 ${statusFilter === k ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-paper-2'}`}>
+                <button key={k} onClick={() => setStatusFilter(k)} className={`px-2 py-1 ${statusFilter === k ? 'bg-primary-container font-medium text-on-primary-container' : 'text-zinc-600 hover:bg-paper-2'}`}>
                   {l}
                 </button>
               ))}
@@ -373,7 +373,7 @@ export function RelationMap({
             </div>
             <div className="thin-scroll max-h-[520px] overflow-auto">
               <table className="w-full border-collapse text-[13px]">
-                <thead className="sticky top-0 bg-paper text-left text-[11px] uppercase tracking-wider text-zinc-500">
+                <thead className="sticky top-0 bg-paper text-left text-[11px]  text-zinc-500">
                   <tr>
                     <th className="px-3 py-2 font-semibold">Quan hệ</th>
                     <th className="w-16 px-2 py-2 font-semibold">Số bài</th>

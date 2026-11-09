@@ -25,7 +25,7 @@ export function PaperFieldEditor({
   const [error, setError] = useState<string | null>(null);
 
   return (
-    <section className="border border-line bg-white">
+    <section className="rounded-2xl border border-line bg-white">
       <header className="flex flex-wrap items-center gap-2 border-b border-line bg-paper px-4 py-2">
         <h3 className="text-sm font-semibold">{label}</h3>
         <span className={`text-[11px] ${verifiedBy ? 'text-emerald-700' : 'text-amber-600'}`}>
@@ -67,7 +67,7 @@ export function PaperFieldEditor({
               value={draft}
               onChange={(e) => setDraft(e.target.value)}
               rows={Math.min(16, Math.max(4, draft.split('\n').length + 1))}
-              className="w-full border border-line p-2 font-mono text-xs outline-none focus:border-zinc-800"
+              className="w-full border border-line p-2 font-mono text-xs outline-none focus:border-primary"
             />
             <div className="flex items-center gap-3">
               <button
@@ -80,7 +80,7 @@ export function PaperFieldEditor({
                     else setEditing(false);
                   })
                 }
-                className="bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
+                className="bg-primary px-3 py-1.5 text-xs font-medium text-white disabled:opacity-60"
               >
                 {pending ? 'Đang lưu…' : 'Lưu (tính là đã kiểm tra)'}
               </button>
@@ -112,7 +112,7 @@ export function ExtractOneButton({ paperId, label }: { paperId: string; label: s
             if (r.error) setError(r.error);
           })
         }
-        className="bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-60"
+        className="bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-60"
       >
         {pending ? 'Đang trích xuất (30–90 giây)…' : label}
       </button>

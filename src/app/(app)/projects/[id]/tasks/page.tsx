@@ -1,3 +1,4 @@
+import { Icon } from '@/components/ui/Icon';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
 import { getProjectForUser, listMembers, listMilestones, listTasks } from '@/lib/data/queries';
@@ -62,19 +63,19 @@ export default async function TasksPage({
         ) : (
           <p className="text-sm text-zinc-500">Bạn đang ở chế độ chỉ xem.</p>
         )}
-        <div className="ml-auto flex border border-line bg-white text-xs">
-          <a href="?" className={`px-3 py-1.5 ${!mine ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-paper-2'}`}>
+        <div className="ml-auto flex rounded-2xl border border-line bg-white text-xs">
+          <a href="?" className={`px-3 py-1.5 ${!mine ? 'bg-primary-container font-medium text-on-primary-container' : 'text-zinc-600 hover:bg-paper-2'}`}>
             Tất cả ({tasks.length})
           </a>
-          <a href="?mine=1" className={`px-3 py-1.5 ${mine ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-paper-2'}`}>
+          <a href="?mine=1" className={`px-3 py-1.5 ${mine ? 'bg-primary-container font-medium text-on-primary-container' : 'text-zinc-600 hover:bg-paper-2'}`}>
             Của tôi ({myCount})
           </a>
         </div>
       </div>
 
-      <div className="overflow-x-auto border border-line bg-white">
+      <div className="overflow-x-auto rounded-2xl border border-line bg-white">
         <table className="w-full text-sm">
-          <thead className="border-b border-line bg-paper text-left text-[11px] uppercase tracking-wider text-zinc-500">
+          <thead className="border-b border-line bg-paper text-left text-[11px]  text-zinc-500">
             <tr>
               <th className="px-3 py-2 font-semibold">Công việc</th>
               <th className="px-3 py-2 font-semibold">Mốc</th>
@@ -102,13 +103,13 @@ export default async function TasksPage({
                       title={`${isSub ? 'Subtask · ' : ''}${TASK_CATEGORY_LABEL[t.category]}`}
                     >
                       {isSub ? <SubtaskMark category={t.category} /> : <CategoryDot category={t.category} />}
-                      {t.isTeam && <span title="Việc của cả nhóm">👥</span>}
+                      {t.isTeam && <span title="Việc của cả nhóm"><Icon name="team" size={15} className="text-primary" /></span>}
                       {t.title}
                     </p>
                     {orphan && t.parentId && <p className="mt-0.5 text-[11px] text-zinc-500">Subtask của: {taskById.get(t.parentId)?.title ?? '—'}</p>}
                     {kids.length > 0 && (
                       <p className="mt-0.5 text-[11px] text-zinc-500" title="Tiến độ trung bình các subtask">
-                        ☰ {kidsDone}/{kids.length} subtask xong · TB {kidsAvg}%
+                        <Icon name="subtask" size={12} className="inline" /> {kidsDone}/{kids.length} subtask xong, trung bình {kidsAvg}%
                       </p>
                     )}
                     {deps.length > 0 && <p className="mt-0.5 text-[11px] text-zinc-500">Sau: {deps.join('; ')}</p>}
@@ -129,7 +130,7 @@ export default async function TasksPage({
                         allowTeam={!t.parentId}
                       />
                     ) : t.isTeam ? (
-                      <span className="text-xs font-medium">👥 Cả nhóm</span>
+                      <span className="flex items-center gap-1 text-xs font-medium"><Icon name="team" size={14} className="text-primary" />Cả nhóm</span>
                     ) : assignee ? (
                       <span className="flex flex-col gap-1 text-xs">
                         {[assignee, ...t.coAssigneeIds.map((id) => memberById.get(id)).filter((m): m is NonNullable<typeof m> => Boolean(m))].map((m, i) => (

@@ -17,7 +17,7 @@ export default async function AppLayout({ children }: { children: ReactNode }) {
         projects={projects.map((p) => ({ id: p.id, code: p.code, name: p.name }))}
         user={{ displayName: user.profile.displayName, email: user.email }}
       />
-      <main className="min-w-0 flex-1 overflow-y-auto">{children}</main>
+      <main className="my-2 mr-2 min-w-0 flex-1 overflow-y-auto rounded-[24px] bg-white">{children}</main>
     </div>
   );
 }

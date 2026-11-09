@@ -1,5 +1,6 @@
 'use client';
 
+import { Icon } from '@/components/ui/Icon';
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { Member, Milestone, ProjectRole, Task, TaskCategory, TaskStatus } from '@/lib/types';
 import { isAssignedTo, TASK_CATEGORIES, TASK_CATEGORY_LABEL, TASK_STATUS_LABEL, TASK_STATUSES } from '@/lib/types';
@@ -13,7 +14,7 @@ export type DialogState =
   | { mode: 'edit'; task: Task };
 
 const TEAM = '__team';
-const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-800 disabled:bg-paper-2 disabled:text-zinc-500';
+const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-primary disabled:bg-paper-2 disabled:text-zinc-500';
 const label = 'mb-1 block text-xs font-medium text-zinc-700';
 
 export function TaskDialog({
@@ -134,14 +135,14 @@ export function TaskDialog({
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-zinc-900/30 p-4" onMouseDown={(e) => e.target === e.currentTarget && onClose()}>
-      <div role="dialog" aria-modal="true" aria-label={editing ? 'Sửa công việc' : 'Tạo công việc'} className="w-full max-w-lg space-y-4 border border-zinc-900 bg-white p-5 shadow-xl">
+      <div role="dialog" aria-modal="true" aria-label={editing ? 'Sửa công việc' : 'Tạo công việc'} className="w-full max-w-lg space-y-4 rounded-2xl border border-line bg-white p-5 shadow-xl">
         <div className="flex items-start justify-between gap-3">
           <h2 className="text-base font-semibold">
             {editing ? (canEdit ? `Sửa ${noun}` : `Chi tiết ${noun}`) : `Tạo ${noun} mới`}
-            {parentTask && <span className="mt-0.5 block text-xs font-normal text-zinc-500">↳ thuộc: {parentTask.title}</span>}
+            {parentTask && <span className="mt-0.5 flex items-center gap-1 text-xs font-normal text-ink-3"><Icon name="subtask" size={12} />Thuộc: {parentTask.title}</span>}
           </h2>
-          <button onClick={onClose} className="text-zinc-500 hover:text-zinc-900" aria-label="Đóng">
-            ✕
+          <button onClick={onClose} className="flex h-9 w-9 items-center justify-center rounded-full text-ink-2 hover:bg-paper-2" aria-label="Đóng">
+            <Icon name="close" size={20} />
           </button>
         </div>
 
@@ -168,7 +169,7 @@ export function TaskDialog({
                 <option value="">— Không, đây là công việc chính —</option>
                 {parentCandidates.map((t) => (
                   <option key={t.id} value={t.id}>
-                    ↳ {t.title}
+                    <Icon name="subtask" size={12} className="inline" /> {t.title}
                   </option>
                 ))}
               </select>
@@ -187,7 +188,7 @@ export function TaskDialog({
                   disabled={!canEdit}
                   onClick={() => setCategory(c)}
                   className={`flex items-center gap-1.5 border px-2.5 py-1 text-xs disabled:opacity-60 ${
-                    category === c ? 'border-zinc-900 bg-paper-2 font-semibold' : 'border-line bg-white hover:bg-paper'
+                    category === c ? 'border-ink-3/50 text-primary bg-paper-2 font-semibold' : 'border-line bg-white hover:bg-paper'
                   }`}
                 >
                   <span className={`inline-block h-3 w-3 rounded-sm ${CATEGORY_STYLE[c].fill}`} />
@@ -323,7 +324,7 @@ export function TaskDialog({
 
           <div className="flex flex-wrap items-center gap-3 pt-1">
             {canEdit && (
-              <button type="submit" disabled={pending} className="bg-zinc-900 px-4 py-2 text-sm font-medium text-white hover:bg-zinc-700 disabled:opacity-60">
+              <button type="submit" disabled={pending} className="bg-primary px-4 py-2 text-sm font-medium text-white hover:bg-primary-hover disabled:opacity-60">
                 {pending ? 'Đang lưu…' : editing ? 'Lưu thay đổi' : `Tạo ${noun}`}
               </button>
             )}

@@ -8,7 +8,7 @@ const TOKEN =
   /(\[(?:IV|MED|MOD|DV|Control|Quốc gia|Ngành|Đối tượng|Thời điểm|Supported|Rejected|Partial)\]|\[(?:Tr\.|p\.|pp\.)\s*[^\]]+\]|\bH\d+[a-z]?:|\((?:\+|-)\))/gi;
 
 const TAG_STYLE: Record<string, string> = {
-  IV: 'bg-zinc-900 text-white border-zinc-900',
+  IV: 'bg-primary text-white border-primary',
   MED: 'bg-amber-50 text-amber-900 border-amber-300',
   MOD: 'bg-stone-200 text-stone-900 border-stone-400',
   DV: 'bg-emerald-800 text-white border-emerald-900',

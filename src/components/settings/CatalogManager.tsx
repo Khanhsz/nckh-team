@@ -87,14 +87,14 @@ export function CatalogManager({ status, canEdit }: { status: CatalogStatus; can
     });
 
   const card = 'space-y-2 border border-line p-3';
-  const fileBtn = 'cursor-pointer bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700 disabled:opacity-50';
+  const fileBtn = 'cursor-pointer bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover disabled:opacity-50';
   const jobLine = (kind: CatalogKind) =>
     job?.kind === kind && (
       <div className={`text-xs ${job.error ? 'text-rose-700' : job.done ? 'text-emerald-700' : 'text-zinc-600'}`}>
         <p>{job.text}</p>
         {!job.done && !job.error && job.pct !== undefined && (
           <div className="mt-1 h-1 w-full bg-zinc-200">
-            <div className="h-full bg-zinc-900 transition-all" style={{ width: `${job.pct}%` }} />
+            <div className="h-full bg-primary transition-all" style={{ width: `${job.pct}%` }} />
           </div>
         )}
       </div>
@@ -131,7 +131,7 @@ export function CatalogManager({ status, canEdit }: { status: CatalogStatus; can
 
       {/* Scopus discontinued */}
       <div className={card}>
-        <p className="text-sm font-semibold">② ⛔ Tạp chí bị Scopus loại</p>
+        <p className="text-sm font-semibold">Tạp chí bị Scopus loại</p>
         <p className="text-xs text-zinc-600">
           <b className="tabular-nums">{status.scopus.count.toLocaleString('vi-VN')}</b> tạp chí · cập nhật {fmt(status.scopus.updatedAt)}
         </p>
@@ -158,7 +158,7 @@ export function CatalogManager({ status, canEdit }: { status: CatalogStatus; can
 
       {/* Beall */}
       <div className={card}>
-        <p className="text-sm font-semibold">③ ⚠ Danh sách Beall (tham khảo)</p>
+        <p className="text-sm font-semibold">Danh sách Beall (tham khảo)</p>
         <p className="text-xs text-zinc-600">
           <b className="tabular-nums">{status.beall.publishers.toLocaleString('vi-VN')}</b> NXB · <b className="tabular-nums">{status.beall.journals.toLocaleString('vi-VN')}</b> tạp chí · cập nhật{' '}
           {fmt(status.beall.updatedAt)}
@@ -180,9 +180,9 @@ export function CatalogManager({ status, canEdit }: { status: CatalogStatus; can
                   onChange={(e) => setPaste(e.target.value)}
                   rows={4}
                   placeholder="Mỗi dòng một tên…"
-                  className="w-full border border-line p-1.5 text-xs outline-none focus:border-zinc-800"
+                  className="w-full border border-line p-1.5 text-xs outline-none focus:border-primary"
                 />
-                <button disabled={busy || !paste.trim()} onClick={onBeallPaste} className="border border-zinc-900 px-2 py-1 text-xs font-medium disabled:opacity-40">
+                <button disabled={busy || !paste.trim()} onClick={onBeallPaste} className="border border-ink-3/50 text-primary px-2 py-1 text-xs font-medium disabled:opacity-40">
                   Thêm vào danh sách
                 </button>
               </div>

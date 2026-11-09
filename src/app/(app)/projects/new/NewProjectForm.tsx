@@ -9,7 +9,7 @@ import { createProjectAction } from './actions';
 export function NewProjectForm({ defaultStart, defaultEnd }: { defaultStart: string; defaultEnd: string }) {
   const [state, action] = useActionState<FormState, FormData>(createProjectAction, {});
   return (
-    <form action={action} className="space-y-4 border border-line bg-white p-5">
+    <form action={action} className="space-y-4 rounded-2xl border border-line bg-white p-5">
       <div className="grid gap-3 md:grid-cols-4">
         <div className="md:col-span-3">
           <label className={labelCls} htmlFor="name">Tên đề tài / dự án *</label>

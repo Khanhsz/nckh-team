@@ -1,5 +1,6 @@
 'use client';
 
+import { Icon } from '@/components/ui/Icon';
 import { useState, useTransition } from 'react';
 import { rotateCalendarTokenAction, setDigestAction } from '@/lib/notify/actions';
 
@@ -34,9 +35,9 @@ export function ReminderCard({ calendarUrl, digest, smtpReady, email }: { calend
     });
 
   return (
-    <section className="grid gap-4 border border-line bg-white p-4 md:grid-cols-2">
+    <section className="grid gap-4 rounded-2xl border border-line bg-white p-4 md:grid-cols-2">
       <div className="space-y-2">
-        <h2 className="text-sm font-semibold">📅 Lịch hạn công việc</h2>
+        <h2 className="flex items-center gap-2 text-sm font-semibold"><Icon name="calendar" size={17} className="text-primary" />Lịch hạn công việc</h2>
         <p className="text-xs text-zinc-600">
           Thêm vào Google Calendar / lịch điện thoại để được nhắc trước 1 ngày. Gồm việc của bạn (kể cả việc cùng làm, việc cả nhóm) và các mốc dự án.
         </p>
@@ -44,7 +45,7 @@ export function ReminderCard({ calendarUrl, digest, smtpReady, email }: { calend
           <>
             <div className="flex gap-1">
               <input readOnly value={url} onFocus={(e) => e.target.select()} className="min-w-0 flex-1 border border-line bg-paper px-2 py-1 font-mono text-[11px]" />
-              <button onClick={copy} className="border border-zinc-900 px-2 py-1 text-xs font-medium hover:bg-paper-2">
+              <button onClick={copy} className="border border-ink-3/50 text-primary px-2 py-1 text-xs font-medium hover:bg-paper-2">
                 Sao chép
               </button>
             </div>
@@ -62,7 +63,7 @@ export function ReminderCard({ calendarUrl, digest, smtpReady, email }: { calend
             </button>
           </>
         ) : (
-          <button onClick={() => make(false)} disabled={pending} className="bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white hover:bg-zinc-700 disabled:opacity-50">
+          <button onClick={() => make(false)} disabled={pending} className="bg-primary px-3 py-1.5 text-xs font-medium text-white hover:bg-primary-hover disabled:opacity-50">
             {pending ? 'Đang tạo…' : 'Tạo link lịch của tôi'}
           </button>
         )}
@@ -70,7 +71,7 @@ export function ReminderCard({ calendarUrl, digest, smtpReady, email }: { calend
       </div>
 
       <div className="space-y-2">
-        <h2 className="text-sm font-semibold">✉️ Email tóm tắt mỗi sáng</h2>
+        <h2 className="flex items-center gap-2 text-sm font-semibold"><Icon name="mail" size={17} className="text-primary" />Email tóm tắt mỗi sáng</h2>
         <p className="text-xs text-zinc-600">
           7h sáng, gửi về <b>{email}</b>: việc quá hạn, việc đến hạn trong 2 ngày, và việc chờ bạn duyệt (nếu là trưởng nhóm). Ngày nào không có gì thì không gửi.
         </p>

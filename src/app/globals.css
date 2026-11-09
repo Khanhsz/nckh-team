@@ -1,12 +1,22 @@
 @import "tailwindcss";
 
+/*
+ * Hệ màu theo tinh thần Google Calendar: nền xanh xám rất nhạt, vùng làm việc trắng bo góc lớn,
+ * một màu chính xanh dương, trạng thái chọn dùng nền xanh nhạt thay vì nền đen.
+ */
 @theme {
-  --color-paper: #faf9f6;
-  --color-paper-2: #f3f2ee;
-  --color-line: #e4e2dc;
-  --color-ink: #18181b;
-  --color-accent: #065f46;
-  --font-sans: var(--font-inter), system-ui, -apple-system, sans-serif;
+  --color-paper: #f8fafd;        /* nền ứng dụng */
+  --color-paper-2: #eef2f8;      /* hover / nền phụ */
+  --color-line: #dde3ea;         /* đường kẻ */
+  --color-ink: #1f1f1f;
+  --color-ink-2: #444746;
+  --color-ink-3: #747775;
+  --color-primary: #0b57d0;
+  --color-primary-hover: #0842a0;
+  --color-primary-container: #d3e3fd;
+  --color-on-primary-container: #041e49;
+  --color-accent: #0b57d0;
+  --font-sans: var(--font-app), system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 html,
@@ -15,12 +25,49 @@ body {
   color: var(--color-ink);
 }
 
-/* Thanh cuộn mảnh cho vùng Gantt */
+@layer base {
+  /* Bo góc theo cấp: nút/tab bo tròn hẳn, ô nhập bo vừa */
+  button,
+  summary {
+    border-radius: 9999px;
+  }
+  input:not([type='checkbox']):not([type='radio']):not([type='range']),
+  select,
+  textarea {
+    border-radius: 10px;
+  }
+  input[type='checkbox'],
+  input[type='radio'],
+  input[type='range'] {
+    accent-color: var(--color-primary);
+  }
+  :focus-visible {
+    outline: 2px solid var(--color-primary);
+    outline-offset: 2px;
+  }
+  table {
+    font-variant-numeric: tabular-nums;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    transition-duration: 0.01ms !important;
+    animation-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Thanh cuộn mảnh */
 .thin-scroll::-webkit-scrollbar {
   height: 10px;
   width: 10px;
 }
 .thin-scroll::-webkit-scrollbar-thumb {
-  background: #d6d4ce;
-  border-radius: 6px;
+  background: #c4ccd6;
+  border: 2px solid transparent;
+  background-clip: padding-box;
+  border-radius: 9999px;
 }

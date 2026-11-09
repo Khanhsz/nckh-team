@@ -1,3 +1,4 @@
+import { Icon } from '@/components/ui/Icon';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth/session';
@@ -41,7 +42,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
       {invites.map((i) => (
         <div key={i.id} className="flex flex-wrap items-center gap-3 border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900">
           <span className="min-w-0 flex-1">
-            👑 <b>{i.from_name}</b> muốn trao quyền trưởng nhóm dự án <b>{i.project_name}</b> cho bạn{i.message ? ` — “${i.message}”` : ''}.
+            <Icon name="crown" size={16} className="mr-1 inline text-[#b06000]" /><b>{i.from_name}</b> muốn trao quyền trưởng nhóm dự án <b>{i.project_name}</b> cho bạn{i.message ? ` — “${i.message}”` : ''}.
           </span>
           <TransferResponse transferId={i.id} compact />
         </div>
@@ -49,21 +50,21 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
 
       <header>
         <p className="text-sm text-zinc-500">Hôm nay, {formatShort(today)}</p>
-        <h1 className="text-2xl font-semibold">Chào {user.profile.displayName.split(' ').pop()} 👋</h1>
+        <h1 className="text-2xl font-semibold">Chào {user.profile.displayName.split(' ').pop()}</h1>
       </header>
 
       {projects.length === 0 ? (
-        <div className="border border-line bg-white p-6">
+        <div className="rounded-2xl border border-line bg-white p-6">
           <p className="font-medium">Bạn chưa tham gia dự án nào.</p>
           <p className="mt-1 text-sm text-zinc-600">Tạo dự án mới (bạn sẽ là trưởng nhóm), hoặc mở link mời mà trưởng nhóm gửi cho bạn.</p>
-          <Link href="/projects/new" className="mt-4 inline-block bg-zinc-900 px-3 py-2 text-sm font-medium text-white hover:bg-zinc-700">
+          <Link href="/projects/new" className="mt-4 inline-block bg-primary px-3 py-2 text-sm font-medium text-white hover:bg-primary-hover">
             ＋ Tạo dự án
           </Link>
         </div>
       ) : (
         <>
           <div className="grid gap-6 md:grid-cols-2">
-            <TaskSection title="Quá hạn" tone="border-t-rose-500" tasks={overdue} projects={byId} empty="Không có việc quá hạn 🎉" />
+            <TaskSection title="Quá hạn" tone="border-t-rose-500" tasks={overdue} projects={byId} empty="Không có việc quá hạn" />
             <TaskSection title="Đến hạn trong 7 ngày" tone="border-t-amber-500" tasks={soon} projects={byId} empty="Tuần này thong thả." />
             <TaskSection title="Đang làm (hạn xa hơn)" tone="border-t-zinc-400" tasks={later} projects={byId} empty="—" />
             {toReview.length > 0 && (
@@ -72,7 +73,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           </div>
 
           <section>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500">Dự án của bạn</h2>
+            <h2 className="mb-3 text-sm font-semibold  text-zinc-500">Dự án của bạn</h2>
             <div className="grid gap-4 md:grid-cols-2">
               {projects.map((p) => {
                 const pt = tasks.filter((t) => t.projectId === p.id);

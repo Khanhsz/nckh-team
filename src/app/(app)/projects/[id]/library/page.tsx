@@ -1,3 +1,4 @@
+import { Icon } from '@/components/ui/Icon';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
@@ -72,7 +73,7 @@ export default async function LibraryPage({
   if (!project.driveFolderId) {
     return (
       <div className="max-w-3xl space-y-3 p-6">
-        <section className="space-y-3 border border-line bg-white p-4">
+        <section className="space-y-3 rounded-2xl border border-line bg-white p-4">
           <h2 className="text-sm font-semibold">Kết nối thư mục bài đọc trên Google Shared Drive</h2>
           {!botEmail && (
             <p className="border border-amber-300 bg-amber-50 p-2.5 text-xs text-amber-900">
@@ -101,26 +102,26 @@ export default async function LibraryPage({
   // ---------- Đã kết nối: thanh công cụ gọn + bảng lấp đầy màn hình ----------
   const toolbar = (
     <>
-      <div className="flex border border-line bg-white text-xs">
+      <div className="flex overflow-hidden rounded-full border border-line bg-white text-xs">
         {VIEW_PRESETS.map((p) => (
-          <Link key={p.id} href={href({ view: p.id })} className={`px-2.5 py-1.5 ${preset.id === p.id ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-paper-2'}`}>
+          <Link key={p.id} href={href({ view: p.id })} className={`px-2.5 py-1.5 ${preset.id === p.id ? 'bg-primary-container font-medium text-on-primary-container' : 'text-zinc-600 hover:bg-paper-2'}`}>
             {p.label}
           </Link>
         ))}
       </div>
-      <div className="flex border border-line bg-white text-xs" title="Độ cao mỗi dòng">
+      <div className="flex overflow-hidden rounded-full border border-line bg-white text-xs" title="Độ cao mỗi dòng">
         {DENSITY.map((x) => (
-          <Link key={x.id} href={href({ d: x.id })} className={`px-2.5 py-1.5 ${density.id === x.id ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-paper-2'}`}>
+          <Link key={x.id} href={href({ d: x.id })} className={`px-2.5 py-1.5 ${density.id === x.id ? 'bg-primary-container font-medium text-on-primary-container' : 'text-zinc-600 hover:bg-paper-2'}`}>
             {x.label}
           </Link>
         ))}
       </div>
-      <div className="flex border border-line bg-white text-xs" title="Lọc theo độ tin cậy của tạp chí">
+      <div className="flex overflow-hidden rounded-full border border-line bg-white text-xs" title="Lọc theo độ tin cậy của tạp chí">
         {RELS.map((r) => (
           <Link
             key={r.id}
             href={href({ rel: r.id || undefined })}
-            className={`px-2.5 py-1.5 ${relFilter === r.id ? 'bg-zinc-900 text-white' : r.id === 'warn' && relCount('warn') > 0 ? 'text-amber-800 hover:bg-amber-50' : 'text-zinc-600 hover:bg-paper-2'}`}
+            className={`px-2.5 py-1.5 ${relFilter === r.id ? 'bg-primary-container font-medium text-on-primary-container' : r.id === 'warn' && relCount('warn') > 0 ? 'text-amber-800 hover:bg-amber-50' : 'text-zinc-600 hover:bg-paper-2'}`}
           >
             {r.label}
             {r.id && <span className="ml-1 tabular-nums opacity-70">{relCount(r.id)}</span>}
@@ -135,7 +136,7 @@ export default async function LibraryPage({
           name="q"
           defaultValue={q}
           placeholder={`Tìm trong ${papers.length} bài…`}
-          className="w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-800"
+          className="w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-primary"
         />
       </form>
       <CitationExport
@@ -166,9 +167,9 @@ export default async function LibraryPage({
       )}
 
       {/* Thanh nguồn Drive: một dòng */}
-      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 border border-line bg-white px-3 py-2 text-xs">
+      <div className="flex flex-wrap items-center gap-x-4 gap-y-2 rounded-2xl border border-line bg-white px-3 py-2 text-xs">
         <span className="flex min-w-0 items-center gap-1.5">
-          <span aria-hidden>📁</span>
+          <Icon name="folder" size={16} className="text-ink-2" />
           <a className="max-w-64 truncate font-medium underline" href={`https://drive.google.com/drive/folders/${project.driveFolderId}`} target="_blank" rel="noreferrer">
             {project.driveFolderName ?? 'Thư mục Drive'}
           </a>
@@ -197,7 +198,7 @@ export default async function LibraryPage({
 
       <LibraryFrame toolbar={toolbar}>
         <table className="w-max min-w-full border-collapse text-[13px]">
-          <thead className="sticky top-0 z-10 bg-paper text-left text-[11px] uppercase tracking-wider text-zinc-500">
+          <thead className="sticky top-0 z-10 bg-paper text-left text-[11px]  text-zinc-500">
             <tr>
               <th className="sticky left-0 z-20 w-64 min-w-64 border-b border-r border-line bg-paper px-3 py-2 font-semibold">
                 Bài đọc ({visible.length})

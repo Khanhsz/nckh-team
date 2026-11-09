@@ -5,7 +5,7 @@ import { useRouter } from 'next/navigation';
 import type { PaperPublication } from '@/lib/types';
 import { refreshPaperMetaAction, updatePublicationAction } from '@/app/(app)/projects/[id]/library/actions';
 
-const field = 'w-full border border-line bg-white px-2 py-1 text-sm outline-none focus:border-zinc-800';
+const field = 'w-full border border-line bg-white px-2 py-1 text-sm outline-none focus:border-primary';
 
 /** Sửa tay / tra lại thông tin xuất bản của một bài */
 export function PublicationEditor({ paperId, pub, canEdit }: { paperId: string; pub: PaperPublication; canEdit: boolean }) {
@@ -41,7 +41,7 @@ export function PublicationEditor({ paperId, pub, canEdit }: { paperId: string; 
   return (
     <div className="space-y-2">
       <div className="flex flex-wrap items-center gap-3 text-xs">
-        <button onClick={lookup} disabled={pending} className="border border-zinc-900 px-2.5 py-1 font-medium hover:bg-paper-2 disabled:opacity-50">
+        <button onClick={lookup} disabled={pending} className="border border-ink-3/50 text-primary px-2.5 py-1 font-medium hover:bg-paper-2 disabled:opacity-50">
           {pending ? 'Đang tra…' : '↻ Tra lại qua Crossref'}
         </button>
         <button onClick={() => setOpen((o) => !o)} className="text-zinc-600 underline">
@@ -72,7 +72,7 @@ export function PublicationEditor({ paperId, pub, canEdit }: { paperId: string; 
             <input className={field} value={v.year} onChange={(e) => setV({ ...v, year: e.target.value })} inputMode="numeric" />
           </label>
           <div className="sm:col-span-2">
-            <button onClick={save} disabled={pending} className="bg-zinc-900 px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
+            <button onClick={save} disabled={pending} className="bg-primary px-3 py-1.5 text-xs font-medium text-white disabled:opacity-50">
               Lưu
             </button>
           </div>

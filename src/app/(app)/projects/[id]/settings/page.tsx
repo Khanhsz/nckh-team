@@ -105,16 +105,16 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
       </div>
 
       <div id="watchlist" className="scroll-mt-4 xl:col-span-2">
-        <Section title={`👁 Danh sách theo dõi của nhóm (${watch.length})`}>
+        <Section title={`Danh sách theo dõi của nhóm (${watch.length})`}>
           <p className="mb-3 text-xs text-zinc-600">
-            Nhà xuất bản / tạp chí nhóm muốn dè chừng (không phải danh sách săn mồi). Bài thuộc danh sách sẽ hiện nhãn <b>👁 Nhóm lưu ý</b> trong Thư viện.
+            Nhà xuất bản / tạp chí nhóm muốn dè chừng (không phải danh sách săn mồi). Bài thuộc danh sách sẽ hiện nhãn <b>Nhóm lưu ý</b> trong Thư viện.
             Nhà xuất bản khớp theo từ (vd. “MDPI” khớp “MDPI AG”); tạp chí khớp đúng tên.
           </p>
           {watch.length > 0 ? (
             <ul className="mb-3 divide-y divide-line border border-line">
               {watch.map((w) => (
                 <li key={w.id} className="flex flex-wrap items-center gap-3 px-3 py-2 text-sm">
-                  <span className="w-20 shrink-0 text-[11px] uppercase tracking-wider text-zinc-500">{w.kind === 'publisher' ? 'NXB' : 'Tạp chí'}</span>
+                  <span className="w-20 shrink-0 text-[11px]  text-zinc-500">{w.kind === 'publisher' ? 'NXB' : 'Tạp chí'}</span>
                   <span className="font-medium">{w.name}</span>
                   {w.note && <span className="min-w-0 flex-1 truncate text-xs text-zinc-500" title={w.note}>— {w.note}</span>}
                   {isOwner && (
@@ -135,7 +135,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
 
       {isOwner && (
         <div className="xl:col-span-2">
-          <Section title="👑 Trao quyền trưởng nhóm">
+          <Section title="Trao quyền trưởng nhóm">
             <TransferOwnership
               projectId={id}
               members={members}
@@ -163,8 +163,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
 
 function Section({ title, children }: { title: string; children: ReactNode }) {
   return (
-    <section className="border border-line bg-white p-5">
-      <h2 className="mb-3 text-sm font-semibold uppercase tracking-wider text-zinc-500">{title}</h2>
+    <section className="rounded-2xl border border-line bg-white p-5">
+      <h2 className="mb-3 text-sm font-semibold  text-zinc-500">{title}</h2>
       {children}
     </section>
   );

@@ -6,6 +6,7 @@ import { TransferResponse } from '@/components/settings/TransferResponse';
 import { formatFull } from '@/lib/dates';
 import { ROLE_LABEL } from '@/lib/types';
 import { NavLink } from '@/components/ui/NavLink';
+import { Icon } from '@/components/ui/Icon';
 
 export default async function ProjectLayout({ children, params }: { children: ReactNode; params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,18 +19,34 @@ export default async function ProjectLayout({ children, params }: { children: Re
 
   return (
     <div className="flex min-h-full flex-col">
-      <header className="border-b border-line bg-white px-4 pt-2.5">
-        <div className="flex min-w-0 flex-wrap items-baseline gap-x-3 gap-y-0.5">
-          {project.code && <span className="font-mono text-xs text-zinc-500">{project.code}</span>}
-          <h1 className="min-w-0 max-w-full truncate text-base font-semibold" title={project.description ?? project.name}>
+      <header className="border-b border-line px-5 pb-2 pt-4">
+        <div className="flex min-w-0 flex-wrap items-baseline gap-x-4 gap-y-1">
+          <h1 className="min-w-0 max-w-full truncate text-[22px] font-normal leading-7 text-ink" title={project.description ?? project.name}>
+            {project.code && <span className="mr-2 text-ink-3">{project.code}</span>}
             {project.name}
           </h1>
-          <span className="text-xs text-zinc-500">
-            {formatFull(project.startDate)} → {formatFull(project.endDate)} · Trưởng nhóm: {owner?.displayName ?? '—'} · {members.length} thành viên · Vai trò:{' '}
-            <b>{ROLE_LABEL[project.role]}</b>
-          </span>
+          <dl className="flex flex-wrap gap-x-4 gap-y-0.5 text-xs text-ink-3">
+            <div>
+              <dt className="sr-only">Thời gian</dt>
+              <dd>
+                {formatFull(project.startDate)} – {formatFull(project.endDate)}
+              </dd>
+            </div>
+            <div className="flex gap-1">
+              <dt>Trưởng nhóm</dt>
+              <dd className="text-ink-2">{owner?.displayName ?? '—'}</dd>
+            </div>
+            <div className="flex gap-1">
+              <dd className="text-ink-2">{members.length}</dd>
+              <dt>thành viên</dt>
+            </div>
+            <div className="flex gap-1">
+              <dt>Bạn là</dt>
+              <dd className="text-ink-2">{ROLE_LABEL[project.role].toLowerCase()}</dd>
+            </div>
+          </dl>
         </div>
-        <nav className="mt-1.5 flex gap-1 overflow-x-auto">
+        <nav className="-mx-1 mt-3 flex gap-1 overflow-x-auto" aria-label="Các phần của dự án">
           <NavLink variant="tab" href={`/projects/${id}/gantt`}>Masterplan</NavLink>
           <NavLink variant="tab" href={`/projects/${id}/tasks`}>Công việc</NavLink>
           <NavLink variant="tab" href={`/projects/${id}/library`}>Thư viện bài đọc</NavLink>
@@ -39,9 +56,10 @@ export default async function ProjectLayout({ children, params }: { children: Re
         </nav>
       </header>
       {invite && (
-        <div className="flex flex-wrap items-center gap-3 border-b border-amber-300 bg-amber-50 px-4 py-2 text-sm text-amber-900">
+        <div className="mx-5 mt-3 flex flex-wrap items-center gap-3 rounded-2xl bg-amber-50 px-4 py-2.5 text-sm text-amber-900">
           <span>
-            👑 <b>{invite.from_name}</b> muốn trao quyền trưởng nhóm dự án này cho bạn{invite.message ? ` — “${invite.message}”` : ''}.
+            <Icon name="crown" size={16} className="mr-1.5 inline -mt-0.5" />
+            <b>{invite.from_name}</b> muốn trao quyền trưởng nhóm dự án này cho bạn{invite.message ? ` — “${invite.message}”` : ''}.
           </span>
           <TransferResponse transferId={invite.id} compact />
         </div>

@@ -139,8 +139,8 @@ export function AskLibrary({ projectId, ready, total, aiReady }: { projectId: st
       <div className="space-y-4">
         {turns.map((t, i) => (
           <div key={i} className="space-y-2">
-            <p className="ml-auto w-fit max-w-[85%] bg-zinc-900 px-3 py-2 text-sm text-white">{t.q}</p>
-            <div className="border border-line bg-white p-4">
+            <p className="ml-auto w-fit max-w-[85%] rounded-2xl rounded-br-md bg-primary-container px-3.5 py-2 text-sm text-on-primary-container">{t.q}</p>
+            <div className="rounded-2xl border border-line bg-white p-4">
               {t.error ? (
                 <p className="text-sm text-rose-700">{t.error}</p>
               ) : t.res ? (
@@ -174,7 +174,7 @@ export function AskLibrary({ projectId, ready, total, aiReady }: { projectId: st
           e.preventDefault();
           ask(q);
         }}
-        className="sticky bottom-2 flex gap-2 border border-zinc-900 bg-white p-2 shadow-lg"
+        className="sticky bottom-2 flex gap-2 rounded-2xl border border-line bg-white p-2 shadow-lg"
       >
         <textarea
           value={q}
@@ -191,7 +191,7 @@ export function AskLibrary({ projectId, ready, total, aiReady }: { projectId: st
           className="min-w-0 flex-1 resize-none px-1 text-sm outline-none"
         />
         <div className="flex flex-col gap-1">
-          <button disabled={pending || !q.trim()} className="bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40">
+          <button disabled={pending || !q.trim()} className="bg-primary px-3 py-1.5 text-sm font-medium text-white disabled:opacity-40">
             {pending ? '…' : 'Hỏi'}
           </button>
           {turns.length > 0 && (

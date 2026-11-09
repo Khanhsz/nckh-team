@@ -1,3 +1,4 @@
+import { Icon } from '@/components/ui/Icon';
 import type { JournalFlag, PaperCredibility, PaperPublication } from '@/lib/types';
 
 const Q_STYLE: Record<string, string> = {
@@ -82,20 +83,20 @@ export function CredibilityCell({
 
       {discontinued.map((f, i) => (
         <p key={`d${i}`} className="w-fit border border-rose-300 bg-rose-50 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-rose-800" title={flagText(f)}>
-          ⛔ Scopus đã loại{f.since ? ` (${f.since})` : ''}
+          <Icon name="block" size={12} strokeWidth={2.2} className="inline" /> Scopus đã loại{f.since ? ` (${f.since})` : ''}
           {detailed && <span className="mt-0.5 block font-normal">{flagText(f)}</span>}
         </p>
       ))}
       {beall.length > 0 && (
         <p className="w-fit border border-amber-300 bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-amber-900" title={beall.map(flagText).join('\n')}>
-          ⚠ Nghi săn mồi (Beall)
+          <Icon name="warning" size={12} strokeWidth={2.2} className="inline" /> Nghi săn mồi (Beall)
           {detailed && beall.map((f, i) => <span key={i} className="mt-0.5 block font-normal">{flagText(f)}</span>)}
         </p>
       )}
 
       {watch.length > 0 && (
         <p className="w-fit border border-yellow-300 bg-yellow-50 px-1.5 py-0.5 text-[10px] font-semibold leading-tight text-yellow-900" title={watch.map(flagText).join('\n')}>
-          👁 Nhóm lưu ý{!detailed && watch[0].reason ? `: ${watch[0].reason.slice(0, 40)}${watch[0].reason.length > 40 ? '…' : ''}` : ''}
+          <Icon name="eye" size={12} strokeWidth={2.2} className="inline" /> Nhóm lưu ý{!detailed && watch[0].reason ? `: ${watch[0].reason.slice(0, 40)}${watch[0].reason.length > 40 ? '…' : ''}` : ''}
           {detailed && watch.map((f, i) => <span key={i} className="mt-0.5 block font-normal">{flagText(f)}</span>)}
         </p>
       )}

@@ -1,3 +1,4 @@
+import { Icon } from '@/components/ui/Icon';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
@@ -41,7 +42,7 @@ export default async function WritingPage({ params, searchParams }: { params: Pr
   return (
     <div className="grid gap-4 p-6 lg:grid-cols-[320px_1fr]">
       <aside className="space-y-4">
-        <section className="border border-line bg-white">
+        <section className="rounded-2xl border border-line bg-white">
           <h2 className="border-b border-line px-4 py-2.5 text-sm font-semibold">Tài liệu & link ({docs.length})</h2>
           <ul className="divide-y divide-line">
             {docs.map((d) => {
@@ -50,7 +51,7 @@ export default async function WritingPage({ params, searchParams }: { params: Pr
                 <li key={d.id} className={selected?.id === d.id ? 'bg-paper-2' : ''}>
                   <Link href={`?doc=${d.id}`} className="flex gap-2 px-4 py-2.5 hover:bg-paper">
                     <span className="mt-0.5 shrink-0 text-sm" aria-hidden>
-                      {d.driveFileId ? '📄' : '🔗'}
+                      <Icon name={d.driveFileId ? 'folder' : 'link'} size={15} />
                     </span>
                     <span className="min-w-0">
                       <span className="block truncate text-sm font-medium leading-snug">{meta?.name ?? d.title}</span>
@@ -78,14 +79,14 @@ export default async function WritingPage({ params, searchParams }: { params: Pr
         </section>
 
         {canEdit && (
-          <section className="space-y-2 border border-line bg-white p-4">
+          <section className="space-y-2 rounded-2xl border border-line bg-white p-4">
             <h3 className="text-sm font-semibold">Gắn tài liệu có sẵn</h3>
             <AttachLinkForm projectId={id} />
           </section>
         )}
       </aside>
 
-      <section className="flex min-h-[70vh] flex-col border border-line bg-white">
+      <section className="flex min-h-[70vh] flex-col rounded-2xl border border-line bg-white">
         {selected ? (
           <>
             <header className="flex flex-wrap items-center gap-3 border-b border-line px-4 py-3">
@@ -96,8 +97,8 @@ export default async function WritingPage({ params, searchParams }: { params: Pr
                   {selected.url && <> · {selected.url}</>}
                 </p>
               </div>
-              <a href={openUrl} target="_blank" rel="noreferrer" className="bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700">
-                {selected.driveFileId ? '✎ Mở để viết trên Google Docs ↗' : 'Mở link ↗'}
+              <a href={openUrl} target="_blank" rel="noreferrer" className="bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover">
+                {selected.driveFileId ? 'Mở để viết trên Google Docs' : 'Mở link'}
               </a>
               {canEdit && (isOwner || selected.createdBy === user.id) && (
                 <form action={unlinkDocAction}>
@@ -125,7 +126,7 @@ export default async function WritingPage({ params, searchParams }: { params: Pr
             ) : (
               <div className="m-auto max-w-md space-y-3 p-8 text-center text-sm text-zinc-600">
                 <p className="text-3xl" aria-hidden>
-                  🔗
+                  <Icon name="link" size={15} />
                 </p>
                 <p className="break-all font-mono text-xs">{selected.url}</p>
                 <p>Link ngoài được mở ở tab mới (nhiều trang không cho hiển thị bên trong ứng dụng khác).</p>

@@ -1,5 +1,6 @@
 'use client';
 
+import { Icon } from '@/components/ui/Icon';
 import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { FormState } from '@/lib/auth/actions';
@@ -16,7 +17,7 @@ export function ConnectFolderForm({ projectId }: { projectId: string }) {
           name="folder"
           required
           placeholder="https://drive.google.com/drive/folders/…"
-          className="min-w-72 flex-1 border border-line bg-white px-2 py-1.5 font-mono text-xs outline-none focus:border-zinc-800"
+          className="min-w-72 flex-1 border border-line bg-white px-2 py-1.5 font-mono text-xs outline-none focus:border-primary"
         />
         <SubmitButton pendingText="Đang kiểm tra…">Kết nối</SubmitButton>
       </div>
@@ -43,7 +44,7 @@ export function SyncButton({ projectId }: { projectId: string }) {
             );
           })
         }
-        className="border border-zinc-900 bg-white px-3 py-1.5 text-sm font-medium hover:bg-paper-2 disabled:opacity-60"
+        className="border border-ink-3/50 text-primary bg-white px-3 py-1.5 text-sm font-medium hover:bg-paper-2 disabled:opacity-60"
       >
         {pending ? 'Đang đồng bộ…' : '⟳ Đồng bộ ngay'}
       </button>
@@ -85,8 +86,8 @@ export function ExtractQueue({ paperIds, label }: { paperIds: string[]; label: s
   return (
     <div className="flex flex-wrap items-center gap-2">
       {!running ? (
-        <button onClick={run} className="bg-zinc-900 px-3 py-1.5 text-sm font-medium text-white hover:bg-zinc-700">
-          ✦ {label} ({paperIds.length})
+        <button onClick={run} className="bg-primary px-3 py-1.5 text-sm font-medium text-white hover:bg-primary-hover">
+          <Icon name="sparkle" size={14} className="inline" /> {label} ({paperIds.length})
         </button>
       ) : (
         <>
@@ -134,8 +135,8 @@ export function MetaQueue({ paperIds }: { paperIds: string[] }) {
   };
 
   return !running ? (
-    <button onClick={run} className="border border-zinc-900 px-2.5 py-1 text-xs font-medium hover:bg-paper-2" title="Tra DOI, ISSN, tạp chí, số trích dẫn qua Crossref (miễn phí)">
-      ★ Tra độ tin cậy ({paperIds.length})
+    <button onClick={run} className="border border-ink-3/50 text-primary px-2.5 py-1 text-xs font-medium hover:bg-paper-2" title="Tra DOI, ISSN, tạp chí, số trích dẫn qua Crossref (miễn phí)">
+      <Icon name="star" size={14} className="inline" /> Tra độ tin cậy ({paperIds.length})
     </button>
   ) : (
     <span className="flex items-center gap-2 text-xs">
