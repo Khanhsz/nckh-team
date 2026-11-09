@@ -6,12 +6,15 @@ import type { ProjectRole } from '@/lib/types';
 import {
   addMilestoneAction,
   addWatchAction,
+  cancelTransferAction,
   createInviteAction,
+  requestTransferAction,
   setMemberRoleAction,
   updateProjectAction,
   type InviteState
 } from '@/app/(app)/projects/[id]/settings/actions';
 import { FormMessage, SubmitButton } from '@/components/ui/FormBits';
+import { useRouter } from 'next/navigation';
 
 const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-primary';
 const label = 'mb-1 block text-xs font-medium';
@@ -125,18 +128,78 @@ export function InviteBox({ projectId }: { projectId: string }) {
   );
 }
 
-export function MemberRoleSelect({ projectId, userId, role }: { projectId: string; userId: string; role: ProjectRole }) {
+/**
+ * Dropdown vai trò của một thành viên (chỉ trưởng nhóm thấy).
+ * Chọn "Trưởng nhóm" không đổi ngay: mở ô xác nhận gửi lời mời; quyền chỉ chuyển khi người nhận chấp nhận.
+ */
+export function MemberRoleSelect({
+  projectId,
+  userId,
+  role,
+  memberName,
+  smtpReady,
+  transfer,
+  otherTransferTo
+}: {
+  projectId: string;
+  userId: string;
+  role: ProjectRole;
+  memberName: string;
+  smtpReady: boolean;
+  /** Lời mời trao quyền đang chờ người này */
+  transfer: { id: string; expiresAt: string } | null;
+  /** Tên người khác đang được mời làm trưởng nhóm (chỉ một lời mời tại một thời điểm) */
+  otherTransferTo: string | null;
+}) {
+  const router = useRouter();
   const [pending, startTransition] = useTransition();
   const [error, setError] = useState<string | null>(null);
+  const [info, setInfo] = useState<string | null>(null);
+  const [confirming, setConfirming] = useState(false);
+  const [message, setMessage] = useState('');
+  const selectRef = useRef<HTMLSelectElement>(null);
+
+  const reset = () => {
+    setConfirming(false);
+    setMessage('');
+    if (selectRef.current) selectRef.current.value = role;
+  };
+
+  const sendInvite = () =>
+    startTransition(async () => {
+      const r = await requestTransferAction(projectId, userId, message);
+      if (r.error) return setError(r.error);
+      setInfo(
+        r.emailed
+          ? `Đã gửi lời mời và email cho ${memberName}.`
+          : `Đã gửi lời mời. ${memberName} sẽ thấy thông báo khi mở app${smtpReady ? ' (gửi email không thành công)' : ' (chưa cấu hình email)'}.`
+      );
+      reset();
+      router.refresh();
+    });
+
+  const cancelInvite = () =>
+    startTransition(async () => {
+      const r = await cancelTransferAction(transfer!.id);
+      if (r.error) return setError(r.error);
+      setInfo('Đã huỷ lời mời.');
+      router.refresh();
+    });
+
   return (
-    <div>
+    <div className="flex flex-col items-end gap-1.5">
       <select
+        ref={selectRef}
         key={role}
         defaultValue={role}
-        disabled={pending}
+        disabled={pending || !!transfer}
+        aria-label={`Vai trò của ${memberName}`}
         onChange={(e) => {
           const el = e.target;
           setError(null);
+          setInfo(null);
+          if (el.value === 'owner') return setConfirming(true);
+          setConfirming(false);
           startTransition(async () => {
             const res = await setMemberRoleAction(projectId, userId, el.value as 'editor' | 'viewer');
             if (res.error) {
@@ -145,12 +208,48 @@ export function MemberRoleSelect({ projectId, userId, role }: { projectId: strin
             }
           });
         }}
-        className="border border-line bg-white px-1.5 py-1 text-xs"
+        className="border border-line bg-white px-2.5 py-1 text-xs"
       >
         <option value="editor">Thành viên</option>
         <option value="viewer">Người xem (GVHD)</option>
+        <option value="owner" disabled={!!otherTransferTo}>
+          {otherTransferTo ? `Trưởng nhóm (đang mời ${otherTransferTo})` : 'Trưởng nhóm…'}
+        </option>
       </select>
-      {error && <p className="mt-1 text-[11px] text-rose-700">{error}</p>}
+
+      {transfer && (
+        <p className="flex items-center gap-2 text-[11px] text-[#7a4a00]">
+          Đang chờ nhận quyền trưởng nhóm, hết hạn {new Date(transfer.expiresAt).toLocaleDateString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh' })}
+          <button onClick={cancelInvite} disabled={pending} className="text-ink-3 underline hover:text-[#d93025]">
+            Huỷ lời mời
+          </button>
+        </p>
+      )}
+
+      {confirming && (
+        <div className="w-72 space-y-2 rounded-2xl border border-line bg-white p-3 text-left shadow-[0_2px_6px_rgba(60,64,67,.15)]">
+          <p className="text-xs text-ink-2">
+            Mời <b>{memberName}</b> làm trưởng nhóm. Quyền chỉ chuyển khi {memberName} bấm Chấp nhận (hạn 7 ngày); sau đó bạn thành thành viên có quyền chỉnh sửa.
+          </p>
+          <input
+            value={message}
+            onChange={(e) => setMessage(e.target.value)}
+            maxLength={500}
+            placeholder="Lời nhắn (tuỳ chọn)"
+            className="w-full border border-line px-2.5 py-1.5 text-xs outline-none focus:border-primary"
+          />
+          <div className="flex justify-end gap-1.5">
+            <button onClick={reset} disabled={pending} className="px-3 py-1 text-xs text-ink-2 hover:bg-paper-2">
+              Huỷ
+            </button>
+            <button onClick={sendInvite} disabled={pending} className="bg-primary px-3 py-1 text-xs font-medium text-white hover:bg-primary-hover disabled:opacity-50">
+              {pending ? 'Đang gửi…' : 'Gửi lời mời'}
+            </button>
+          </div>
+        </div>
+      )}
+      {error && <p className="text-[11px] text-[#d93025]">{error}</p>}
+      {info && <p className="text-[11px] text-ink-3">{info}</p>}
     </div>
   );
 }

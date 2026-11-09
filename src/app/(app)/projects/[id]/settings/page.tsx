@@ -2,7 +2,6 @@ import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
 import { getCatalogStatus, getPendingTransfer, getProjectForUser, listMembers, listMilestones, listWatchlist } from '@/lib/data/queries';
-import { TransferOwnership } from '@/components/settings/TransferOwnership';
 import { smtpConfigured } from '@/lib/mail/smtp';
 import { CatalogManager } from '@/components/settings/CatalogManager';
 import { addDays, formatFull, todayISO } from '@/lib/dates';
@@ -24,6 +23,8 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
     project.role === 'owner' ? getPendingTransfer(id) : Promise.resolve(null)
   ]);
   const isOwner = project.role === 'owner';
+  const smtpReady = smtpConfigured();
+  const transferToName = transfer ? (members.find((m) => m.userId === transfer.to_user)?.displayName ?? 'thành viên') : null;
 
   return (
     <div className="grid gap-6 p-8 xl:grid-cols-2">
@@ -40,7 +41,15 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
               </div>
               {isOwner && m.role !== 'owner' ? (
                 <>
-                  <MemberRoleSelect projectId={id} userId={m.userId} role={m.role} />
+                  <MemberRoleSelect
+                    projectId={id}
+                    userId={m.userId}
+                    role={m.role}
+                    memberName={m.displayName}
+                    smtpReady={smtpReady}
+                    transfer={transfer && transfer.to_user === m.userId ? { id: transfer.id, expiresAt: transfer.expires_at } : null}
+                    otherTransferTo={transfer && transfer.to_user !== m.userId ? transferToName : null}
+                  />
                   <form action={removeMemberAction}>
                     <input type="hidden" name="projectId" value={id} />
                     <input type="hidden" name="userId" value={m.userId} />
@@ -133,28 +142,11 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
         </Section>
       </div>
 
-      {isOwner && (
-        <div className="xl:col-span-2">
-          <Section title="Trao quyền trưởng nhóm">
-            <TransferOwnership
-              projectId={id}
-              members={members}
-              smtpReady={smtpConfigured()}
-              pending={
-                transfer
-                  ? { id: transfer.id, toName: members.find((m) => m.userId === transfer.to_user)?.displayName ?? 'thành viên', expiresAt: transfer.expires_at }
-                  : null
-              }
-            />
-          </Section>
-        </div>
-      )}
-
       <Section title="Phân quyền">
         <ul className="space-y-1.5 text-sm text-zinc-700">
-          <li><b>Trưởng nhóm</b> — lập kế hoạch, giao việc cho mọi người, xác nhận “Hoàn thành”, mời/gỡ thành viên.</li>
-          <li><b>Thành viên</b> — tạo việc cho chính mình, cập nhật tiến độ việc được giao, gửi “Chờ duyệt”.</li>
-          <li><b>Người xem (GVHD)</b> — xem toàn bộ kế hoạch và tiến độ, không chỉnh sửa.</li>
+          <li><b>Trưởng nhóm</b>: lập kế hoạch, giao việc cho mọi người, xác nhận “Hoàn thành”, mời/gỡ thành viên. Muốn trao quyền, chọn “Trưởng nhóm” ở dropdown vai trò của người nhận.</li>
+          <li><b>Thành viên</b>: tạo việc cho chính mình, cập nhật tiến độ việc được giao, gửi “Chờ duyệt”.</li>
+          <li><b>Người xem (GVHD)</b>: xem toàn bộ kế hoạch và tiến độ, không chỉnh sửa.</li>
         </ul>
       </Section>
     </div>
