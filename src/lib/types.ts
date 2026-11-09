@@ -30,6 +30,10 @@ export interface Project {
   driveSyncedAt: string | null;
   writingFolderId: string | null;
   writingFolderName: string | null;
+  /** Ảnh bìa: 'c:<mã mẫu>' | 'img:<đường dẫn trong bucket covers>' | 'url:<https…>' */
+  cover: string | null;
+  /** Vị trí dọc của ảnh bìa, 0–100 (%) */
+  coverY: number;
 }
 
 export interface ProjectWithRole extends Project {

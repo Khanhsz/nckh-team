@@ -148,19 +148,19 @@ export type Database = {
       };
       projects: {
         Row: {
-          code: string | null; created_at: string; end_date: string; id: string; name: string; owner_id: string; research_model: string;
+          code: string | null; cover: string | null; cover_y: number; created_at: string; end_date: string; id: string; name: string; owner_id: string; research_model: string;
           research_topic: string; start_date: string; synthesis: string; synthesis_updated_at: string | null; updated_at: string;
           drive_folder_id: string | null; drive_folder_name: string | null; drive_synced_at: string | null;
           writing_folder_id: string | null; writing_folder_name: string | null;
         };
         Insert: {
-          code?: string | null; created_at?: string; end_date?: string; id?: string; name: string; owner_id: string; research_model?: string;
+          code?: string | null; cover?: string | null; cover_y?: number; created_at?: string; end_date?: string; id?: string; name: string; owner_id: string; research_model?: string;
           research_topic?: string; start_date?: string; synthesis?: string; synthesis_updated_at?: string | null; updated_at?: string;
           drive_folder_id?: string | null; drive_folder_name?: string | null; drive_synced_at?: string | null;
           writing_folder_id?: string | null; writing_folder_name?: string | null;
         };
         Update: {
-          code?: string | null; created_at?: string; end_date?: string; id?: string; name?: string; owner_id?: string; research_model?: string;
+          code?: string | null; cover?: string | null; cover_y?: number; created_at?: string; end_date?: string; id?: string; name?: string; owner_id?: string; research_model?: string;
           research_topic?: string; start_date?: string; synthesis?: string; synthesis_updated_at?: string | null; updated_at?: string;
           drive_folder_id?: string | null; drive_folder_name?: string | null; drive_synced_at?: string | null;
           writing_folder_id?: string | null; writing_folder_name?: string | null;

@@ -7,7 +7,7 @@ import { CatalogManager } from '@/components/settings/CatalogManager';
 import { addDays, formatFull, todayISO } from '@/lib/dates';
 import { ROLE_LABEL } from '@/lib/types';
 import { Avatar } from '@/components/ui/badges';
-import { AddMilestoneForm, AddWatchForm, InviteBox, MemberRoleSelect, ProjectInfoForm } from '@/components/settings/SettingsForms';
+import { AddMilestoneForm, AddWatchForm, InviteBox, MemberRoleSelect } from '@/components/settings/SettingsForms';
 import { deleteMilestoneAction, removeMemberAction, removeWatchAction } from './actions';
 
 export default async function SettingsPage({ params }: { params: Promise<{ id: string }> }) {
@@ -96,12 +96,6 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           </div>
         )}
       </Section>
-
-      {isOwner && (
-        <Section title="Thông tin dự án">
-          <ProjectInfoForm project={project} />
-        </Section>
-      )}
 
       <div id="catalog" className="scroll-mt-4 xl:col-span-2">
         <Section title="Danh mục tạp chí — dùng để đánh giá độ tin cậy bài đọc (dùng chung mọi dự án)">

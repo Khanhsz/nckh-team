@@ -36,7 +36,11 @@ const PATHS = {
   logout: 'M15 4h3a1 1 0 0 1 1 1v14a1 1 0 0 1-1 1h-3M10 8l-4 4 4 4M6 12h10',
   external: 'M14 4h6v6M20 4l-9 9M18 14v5a1 1 0 0 1-1 1H5a1 1 0 0 1-1-1V7a1 1 0 0 1 1-1h5',
   star: 'M12 4.5l2.3 4.8 5.2.6-3.9 3.6 1 5.2L12 16.1 7.4 18.7l1-5.2L4.5 9.9l5.2-.6L12 4.5Z',
-  subtask: 'M6 4v9a3 3 0 0 0 3 3h9m-3-3 3 3-3 3'
+  subtask: 'M6 4v9a3 3 0 0 0 3 3h9m-3-3 3 3-3 3',
+  image: 'M4 5h16v14H4V5Zm0 11 4.5-4.5 4 4 2.5-2.5L20 18M15.5 9.5a1 1 0 1 0 0-.01',
+  move: 'M12 3v18m0-18-3 3m3-3 3 3m-3 15-3-3m3 3 3-3',
+  upload: 'M12 16V5m-4.5 4.5L12 5l4.5 4.5M5 19h14',
+  trash: 'M5 7h14M10 7V4.5h4V7m-7 0 1 13h8l1-13'
 } as const;
 
 export type IconName = keyof typeof PATHS;

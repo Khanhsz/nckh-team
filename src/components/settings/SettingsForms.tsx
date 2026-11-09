@@ -10,7 +10,6 @@ import {
   createInviteAction,
   requestTransferAction,
   setMemberRoleAction,
-  updateProjectAction,
   type InviteState
 } from '@/app/(app)/projects/[id]/settings/actions';
 import { FormMessage, SubmitButton } from '@/components/ui/FormBits';
@@ -18,45 +17,6 @@ import { useRouter } from 'next/navigation';
 
 const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-primary';
 const label = 'mb-1 block text-xs font-medium';
-
-export function ProjectInfoForm({
-  project
-}: {
-  project: { id: string; name: string; code: string | null; description: string; startDate: string; endDate: string };
-}) {
-  const [state, action] = useActionState<FormState, FormData>(updateProjectAction, {});
-  return (
-    <form action={action} className="space-y-3">
-      <input type="hidden" name="projectId" value={project.id} />
-      <div className="grid gap-3 md:grid-cols-4">
-        <div className="md:col-span-3">
-          <label className={label}>Tên dự án</label>
-          <input name="name" defaultValue={project.name} required maxLength={160} className={field} />
-        </div>
-        <div>
-          <label className={label}>Mã</label>
-          <input name="code" defaultValue={project.code ?? ''} maxLength={20} className={`${field} font-mono uppercase`} />
-        </div>
-      </div>
-      <div>
-        <label className={label}>Mô tả</label>
-        <textarea name="description" defaultValue={project.description} rows={2} maxLength={2000} className={field} />
-      </div>
-      <div className="grid grid-cols-2 gap-3">
-        <div>
-          <label className={label}>Bắt đầu</label>
-          <input type="date" name="startDate" defaultValue={project.startDate} required className={field} />
-        </div>
-        <div>
-          <label className={label}>Kết thúc</label>
-          <input type="date" name="endDate" defaultValue={project.endDate} required className={field} />
-        </div>
-      </div>
-      <FormMessage error={state.error} message={state.ok ? state.message : undefined} />
-      <SubmitButton pendingText="Đang lưu…">Lưu thông tin</SubmitButton>
-    </form>
-  );
-}
 
 export function AddMilestoneForm({ projectId, defaultDue }: { projectId: string; defaultDue: string }) {
   const [state, action] = useActionState<FormState, FormData>(addMilestoneAction, {});

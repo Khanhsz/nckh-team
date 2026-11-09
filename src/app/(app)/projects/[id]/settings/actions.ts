@@ -13,33 +13,6 @@ import { transferInviteMail } from '@/lib/mail/templates';
 
 const refresh = () => revalidatePath('/', 'layout');
 
-export async function updateProjectAction(_prev: FormState, fd: FormData): Promise<FormState> {
-  await requireUser();
-  const id = str(fd, 'projectId');
-  const name = str(fd, 'name');
-  const startDate = str(fd, 'startDate');
-  const endDate = str(fd, 'endDate');
-  if (name.length < 2 || name.length > 160) return { error: 'Tên dự án cần 2–160 ký tự.' };
-  if (!isValidISODate(startDate) || !isValidISODate(endDate) || endDate < startDate) return { error: 'Khoảng thời gian không hợp lệ.' };
-
-  const supabase = await createClient();
-  const { data, error } = await supabase
-    .from('projects')
-    .update({
-      name,
-      code: str(fd, 'code').toUpperCase().slice(0, 20) || null,
-      research_topic: str(fd, 'description').slice(0, 2000),
-      start_date: startDate,
-      end_date: endDate
-    })
-    .eq('id', id)
-    .select('id');
-  if (error) return { error: dbErrorMessage(error) };
-  if (!data?.length) return { error: 'Chỉ trưởng nhóm được sửa thông tin dự án.' };
-  refresh();
-  return { ok: true, message: 'Đã lưu.' };
-}
-
 export async function addMilestoneAction(_prev: FormState, fd: FormData): Promise<FormState> {
   await requireUser();
   const name = str(fd, 'name');
@@ -179,6 +152,55 @@ export async function cancelTransferAction(transferId: string): Promise<{ error?
   const supabase = await createClient();
   const { error } = await supabase.rpc('cancel_ownership_transfer', { p_id: transferId });
   if (error) return { error: dbErrorMessage(error) };
+  refresh();
+  return {};
+}
+
+// ---- Sửa nhanh thông tin dự án ngay trên tiêu đề (chỉ trưởng nhóm; RLS chặn người khác) ----
+export async function updateProjectFieldsAction(
+  projectId: string,
+  patch: { name?: string; code?: string; description?: string; startDate?: string; endDate?: string }
+): Promise<{ error?: string }> {
+  await requireUser();
+  const upd: { name?: string; code?: string | null; research_topic?: string; start_date?: string; end_date?: string } = {};
+  if (patch.name !== undefined) {
+    const name = patch.name.trim();
+    if (name.length < 2 || name.length > 160) return { error: 'Tên dự án cần 2–160 ký tự.' };
+    upd.name = name;
+  }
+  if (patch.code !== undefined) upd.code = patch.code.trim().toUpperCase().slice(0, 20) || null;
+  if (patch.description !== undefined) upd.research_topic = patch.description.trim().slice(0, 2000);
+  if (patch.startDate !== undefined || patch.endDate !== undefined) {
+    const s = patch.startDate ?? '';
+    const e = patch.endDate ?? '';
+    if (!isValidISODate(s) || !isValidISODate(e) || e < s) return { error: 'Ngày kết thúc phải sau ngày bắt đầu.' };
+    upd.start_date = s;
+    upd.end_date = e;
+  }
+  if (!Object.keys(upd).length) return {};
+  const supabase = await createClient();
+  const { data, error } = await supabase.from('projects').update(upd).eq('id', projectId).select('id');
+  if (error) return { error: dbErrorMessage(error) };
+  if (!data?.length) return { error: 'Chỉ trưởng nhóm được sửa thông tin dự án.' };
+  refresh();
+  return {};
+}
+
+/** Đặt ảnh bìa là một mẫu (c:key), link ảnh (url:https…), hoặc gỡ (null). Ảnh tải lên đi qua /api/projects/[id]/cover. */
+export async function setProjectCoverAction(projectId: string, cover: string | null, coverY?: number): Promise<{ error?: string }> {
+  await requireUser();
+  if (cover !== null && !/^c:[a-z-]{2,30}$/.test(cover) && !/^url:https:\/\/\S{4,580}$/i.test(cover) && !/^img:[0-9a-f-]{36}\/[\w.-]{1,80}$/.test(cover))
+    return { error: 'Ảnh bìa không hợp lệ.' };
+  const supabase = await createClient();
+  const { data: cur } = await supabase.from('projects').select('cover').eq('id', projectId).maybeSingle();
+  const upd: { cover?: string | null; cover_y?: number } = { cover };
+  if (coverY !== undefined) upd.cover_y = Math.max(0, Math.min(100, Math.round(coverY)));
+  else if (cover !== cur?.cover) upd.cover_y = 50;
+  const { data, error } = await supabase.from('projects').update(upd).eq('id', projectId).select('id');
+  if (error) return { error: dbErrorMessage(error) };
+  if (!data?.length) return { error: 'Chỉ trưởng nhóm được đổi ảnh bìa.' };
+  // Xoá ảnh đã tải lên trước đó nếu không còn dùng
+  if (cur?.cover?.startsWith('img:') && cur.cover !== cover) await supabase.storage.from('covers').remove([cur.cover.slice(4)]);
   refresh();
   return {};
 }
