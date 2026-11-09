@@ -120,9 +120,10 @@ export const projectLabel = (p: Pick<Project, 'code' | 'name'>) => p.code || p.n
 export interface ProjectDocument {
   id: string;
   projectId: string;
-  driveFileId: string;
+  driveFileId: string | null;
+  url: string | null;
   title: string;
-  kind: 'working' | 'proposal' | 'review' | 'other';
+  kind: 'working' | 'proposal' | 'review' | 'other' | 'link';
   createdBy: string;
   createdAt: string;
 }

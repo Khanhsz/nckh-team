@@ -82,9 +82,9 @@ export type Database = {
         ];
       };
       project_documents: {
-        Row: { id: string; project_id: string; drive_file_id: string; title: string; kind: string; created_by: string; created_at: string };
-        Insert: { id?: string; project_id: string; drive_file_id: string; title: string; kind?: string; created_by?: string; created_at?: string };
-        Update: { id?: string; project_id?: string; drive_file_id?: string; title?: string; kind?: string; created_by?: string; created_at?: string };
+        Row: { id: string; project_id: string; drive_file_id: string | null; url: string | null; title: string; kind: string; created_by: string; created_at: string };
+        Insert: { id?: string; project_id: string; drive_file_id?: string | null; url?: string | null; title: string; kind?: string; created_by?: string; created_at?: string };
+        Update: { id?: string; project_id?: string; drive_file_id?: string | null; url?: string | null; title?: string; kind?: string; created_by?: string; created_at?: string };
         Relationships: [
           { foreignKeyName: 'project_documents_project_id_fkey'; columns: ['project_id']; isOneToOne: false; referencedRelation: 'projects'; referencedColumns: ['id'] }
         ];

@@ -3,10 +3,9 @@
 import { revalidatePath } from 'next/cache';
 import { createClient } from '@/lib/supabase/server';
 import { requireUser } from '@/lib/auth/session';
-import { getProjectForUser, listPapers } from '@/lib/data/queries';
+import { getProjectForUser } from '@/lib/data/queries';
 import { dbErrorMessage } from '@/lib/errors';
-import { createDocFromHtml, DriveError, getDocMeta, getFolder, parseDocId, parseFolderId } from '@/lib/google/drive';
-import { buildDocHtml, type DocTemplate } from '@/lib/writing/templates';
+import { getDocMeta, parseDocId, serviceAccountEmail } from '@/lib/google/drive';
 import { str } from '@/lib/site';
 import type { FormState } from '@/lib/auth/actions';
 
@@ -15,88 +14,53 @@ export interface DocFormState extends FormState {
 }
 
 const refresh = () => revalidatePath('/', 'layout');
-const KIND: Record<DocTemplate, 'working' | 'proposal' | 'review' | 'other'> = { paper: 'working', proposal: 'proposal', review: 'review', blank: 'other' };
 
-async function editable(projectId: string) {
-  const user = await requireUser();
-  const project = await getProjectForUser(projectId, user.id);
-  if (!project || project.role === 'viewer') return null;
-  return project;
-}
-
-export async function connectWritingFolderAction(_prev: FormState, fd: FormData): Promise<FormState> {
+/** Gắn tài liệu có sẵn: link Google Docs (có xem trước) hoặc link bất kỳ. */
+export async function attachLinkAction(_prev: DocFormState, fd: FormData): Promise<DocFormState> {
   const user = await requireUser();
   const projectId = str(fd, 'projectId');
   const project = await getProjectForUser(projectId, user.id);
-  if (!project || project.role !== 'owner') return { error: 'Chỉ trưởng nhóm được chọn thư mục bài viết.' };
-  const folderId = parseFolderId(str(fd, 'folder'));
-  if (!folderId) return { error: 'Không nhận ra link thư mục Drive.' };
+  if (!project || project.role === 'viewer') return { error: 'Bạn không có quyền thêm tài liệu trong dự án này.' };
+
+  const raw = str(fd, 'url');
+  const customTitle = str(fd, 'title').slice(0, 300);
+  let url: URL;
   try {
-    const folder = await getFolder(folderId);
-    const supabase = await createClient();
-    const { error } = await supabase
-      .from('projects')
-      .update({ writing_folder_id: folder.id, writing_folder_name: folder.name.slice(0, 200) })
-      .eq('id', projectId);
-    if (error) return { error: dbErrorMessage(error) };
-    refresh();
-    return { ok: true, message: `Working file mới sẽ được tạo trong “${folder.name}”.` };
-  } catch (e) {
-    return { error: e instanceof DriveError ? e.message : 'Không truy cập được thư mục.' };
+    url = new URL(raw);
+    if (url.protocol !== 'https:' && url.protocol !== 'http:') throw new Error();
+  } catch {
+    return { error: 'Link không hợp lệ — dán đầy đủ địa chỉ bắt đầu bằng https://' };
   }
-}
 
-export async function createDocAction(_prev: DocFormState, fd: FormData): Promise<DocFormState> {
-  const projectId = str(fd, 'projectId');
-  const project = await editable(projectId);
-  if (!project) return { error: 'Bạn không có quyền tạo tài liệu trong dự án này.' };
-  const title = str(fd, 'title').slice(0, 200);
-  const template = (['paper', 'proposal', 'review', 'blank'].includes(str(fd, 'template')) ? str(fd, 'template') : 'paper') as DocTemplate;
-  if (!title) return { error: 'Nhập tên tài liệu.' };
-  const folderId = project.writingFolderId ?? project.driveFolderId;
-  if (!folderId) return { error: 'Chưa có thư mục Drive để lưu tài liệu. Trưởng nhóm cần chọn thư mục bài viết.' };
+  const supabase = await createClient();
+  const isGoogleDoc = url.hostname === 'docs.google.com' && url.pathname.startsWith('/document/');
+  const docId = isGoogleDoc ? parseDocId(raw) : null;
 
-  try {
-    const papers = template === 'review' ? await listPapers(projectId) : [];
-    const doc = await createDocFromHtml(folderId, title, buildDocHtml(template, project, title, papers));
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from('project_documents')
-      .insert({ project_id: projectId, drive_file_id: doc.id, title, kind: KIND[template] })
-      .select('id')
-      .single();
-    if (error || !data) return { error: dbErrorMessage(error, 'Đã tạo file trên Drive nhưng không lưu được vào app.') };
-    refresh();
-    return { ok: true, message: `Đã tạo “${title}”.`, docId: data.id };
-  } catch (e) {
-    return { error: e instanceof DriveError ? e.message : 'Không tạo được tài liệu.' };
-  }
-}
-
-export async function linkDocAction(_prev: DocFormState, fd: FormData): Promise<DocFormState> {
-  const projectId = str(fd, 'projectId');
-  const project = await editable(projectId);
-  if (!project) return { error: 'Bạn không có quyền thêm tài liệu trong dự án này.' };
-  const docId = parseDocId(str(fd, 'url'));
-  if (!docId) return { error: 'Không nhận ra link Google Docs (dạng docs.google.com/document/d/…).' };
-  try {
-    const meta = await getDocMeta(docId);
-    const supabase = await createClient();
-    const { data, error } = await supabase
-      .from('project_documents')
-      .insert({ project_id: projectId, drive_file_id: meta.id, title: meta.name.slice(0, 300) || 'Tài liệu', kind: 'working' })
-      .select('id')
-      .single();
-    if (error?.code === '23505') return { error: 'Tài liệu này đã có trong danh sách.' };
-    if (error || !data) return { error: dbErrorMessage(error, 'Không thêm được tài liệu.') };
-    refresh();
-    return { ok: true, message: `Đã gắn “${meta.name}”.`, docId: data.id };
-  } catch (e) {
-    if (e instanceof DriveError && (e.code === 'not_found' || e.code === 'forbidden')) {
-      return { error: 'Bot không mở được tài liệu này. Hãy đặt file trong Shared Drive của nhóm (hoặc chia sẻ cho email bot).' };
+  let row: { drive_file_id: string | null; url: string | null; title: string; kind: string };
+  if (docId) {
+    // Lấy tên thật của Doc nếu bot đọc được; không đọc được vẫn cho gắn
+    let title = customTitle;
+    if (!title && serviceAccountEmail()) {
+      try {
+        title = (await getDocMeta(docId)).name;
+      } catch {
+        /* Doc nằm ngoài Shared Drive của bot — vẫn gắn được, chỉ thiếu tên tự động */
+      }
     }
-    return { error: e instanceof DriveError ? e.message : 'Không thêm được tài liệu.' };
+    row = { drive_file_id: docId, url: null, title: (title || 'Google Doc').slice(0, 300), kind: 'working' };
+  } else {
+    row = { drive_file_id: null, url: url.toString().slice(0, 2000), title: (customTitle || url.hostname.replace(/^www\./, '')).slice(0, 300), kind: 'link' };
   }
+
+  const { data, error } = await supabase
+    .from('project_documents')
+    .insert({ project_id: projectId, ...row })
+    .select('id')
+    .single();
+  if (error?.code === '23505') return { error: 'Tài liệu/link này đã có trong danh sách.' };
+  if (error || !data) return { error: dbErrorMessage(error, 'Không thêm được.') };
+  refresh();
+  return { ok: true, message: `Đã gắn “${row.title}”.`, docId: data.id };
 }
 
 export async function unlinkDocAction(fd: FormData): Promise<void> {

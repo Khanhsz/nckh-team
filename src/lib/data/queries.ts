@@ -114,8 +114,9 @@ export const listDocuments = cache(async (projectId: string): Promise<ProjectDoc
     id: r.id,
     projectId: r.project_id,
     driveFileId: r.drive_file_id,
+    url: r.url,
     title: r.title,
-    kind: (['working', 'proposal', 'review', 'other'].includes(r.kind) ? r.kind : 'other') as ProjectDocument['kind'],
+    kind: (['working', 'proposal', 'review', 'other', 'link'].includes(r.kind) ? r.kind : 'other') as ProjectDocument['kind'],
     createdBy: r.created_by,
     createdAt: r.created_at
   }));
