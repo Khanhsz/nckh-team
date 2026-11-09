@@ -4,9 +4,9 @@ import { getProjectForUser, listMembers, listMilestones, listTasks } from '@/lib
 import { canCreateTask, canManage, canUpdateTask } from '@/lib/data/permissions';
 import { addDays, dueLabel, formatShort, todayISO } from '@/lib/dates';
 import { Avatar, CategoryDot, SubtaskMark } from '@/components/ui/badges';
-import { TASK_CATEGORY_LABEL } from '@/lib/types';
+import { isAssignedTo, TASK_CATEGORY_LABEL } from '@/lib/types';
 import { NewTaskForm } from '@/components/tasks/NewTaskForm';
-import { AssigneeSelect, ProgressInput, StatusSelect } from '@/components/tasks/TaskControls';
+import { AssigneeSelect, CoAssigneePicker, ProgressInput, StatusSelect } from '@/components/tasks/TaskControls';
 import { deleteTaskAction } from './actions';
 
 export default async function TasksPage({
@@ -27,8 +27,8 @@ export default async function TasksPage({
   const memberById = new Map(members.map((m) => [m.userId, m]));
   const milestoneById = new Map(milestones.map((m) => [m.id, m]));
   const manage = canManage(project.role);
-  const myCount = tasks.filter((t) => t.assigneeId === user.id).length;
-  const visible = mine ? tasks.filter((t) => t.assigneeId === user.id) : tasks;
+  const myCount = tasks.filter((t) => isAssignedTo(t, user.id)).length;
+  const visible = mine ? tasks.filter((t) => isAssignedTo(t, user.id)) : tasks;
   const taskById = new Map(tasks.map((t) => [t.id, t]));
 
   // Gom subtask ngay dưới việc cha (1 cấp). Subtask có cha bị lọc mất thì hiện riêng kèm tên cha.
@@ -121,13 +121,23 @@ export default async function TasksPage({
                   <td className="px-3 py-2.5 text-xs text-zinc-600">{t.milestoneId ? milestoneById.get(t.milestoneId)?.name : '—'}</td>
                   <td className="px-3 py-2.5">
                     {manage ? (
-                      <AssigneeSelect taskId={t.id} value={t.isTeam ? '__team' : t.assigneeId} members={members} allowTeam={!t.parentId} />
+                      <>
+                        <AssigneeSelect taskId={t.id} value={t.isTeam ? '__team' : t.assigneeId} members={members} allowTeam={!t.parentId} />
+                        {!t.isTeam && t.assigneeId && (
+                          <CoAssigneePicker key={t.coAssigneeIds.join()} taskId={t.id} primaryId={t.assigneeId} value={t.coAssigneeIds} members={members} />
+                        )}
+                      </>
                     ) : t.isTeam ? (
                       <span className="text-xs font-medium">👥 Cả nhóm</span>
                     ) : assignee ? (
-                      <span className="flex items-center gap-1.5 text-xs">
-                        <Avatar name={assignee.displayName} email={assignee.email ?? ''} size={20} />
-                        {assignee.displayName}
+                      <span className="flex flex-col gap-1 text-xs">
+                        {[assignee, ...t.coAssigneeIds.map((id) => memberById.get(id)).filter((m): m is NonNullable<typeof m> => Boolean(m))].map((m, i) => (
+                          <span key={m.userId} className="flex items-center gap-1.5">
+                            <Avatar name={m.displayName} email={m.email ?? ''} size={20} />
+                            {m.displayName}
+                            {i === 0 && t.coAssigneeIds.length > 0 && <span className="text-[10px] text-zinc-400">(chính)</span>}
+                          </span>
+                        ))}
                       </span>
                     ) : (
                       <span className="text-xs text-zinc-400">Chưa giao</span>

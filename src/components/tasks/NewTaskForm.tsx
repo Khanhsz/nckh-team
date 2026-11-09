@@ -124,6 +124,22 @@ export function NewTaskForm({
           ) : (
             <p className="py-1.5 text-sm text-zinc-600">Bạn (thành viên chỉ tự giao cho mình)</p>
           )}
+          {isOwner && (
+            <details className="mt-1">
+              <summary className="cursor-pointer text-[11px] text-zinc-500 hover:text-zinc-900">+ Người cùng làm (2–3 người một việc)</summary>
+              <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 border border-line p-1.5">
+                {members
+                  .filter((m) => m.role !== 'viewer')
+                  .map((m) => (
+                    <label key={m.userId} className="flex items-center gap-1.5 text-xs">
+                      <input type="checkbox" name="coAssigneeIds" value={m.userId} />
+                      {m.displayName}
+                    </label>
+                  ))}
+              </div>
+              <p className="mt-0.5 text-[10px] text-zinc-500">Nếu không chọn người chính, người đầu tiên được chọn sẽ là người chính.</p>
+            </details>
+          )}
         </div>
         <div>
           <label className="mb-1 block text-xs font-medium">Bắt đầu *</label>

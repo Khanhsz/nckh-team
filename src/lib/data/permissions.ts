@@ -1,4 +1,4 @@
-import type { ProjectRole, Task } from '../types';
+import { isAssignedTo, type ProjectRole, type Task } from '../types';
 
 /**
  * Quy tắc hiển thị trên giao diện — PHẢN CHIẾU RLS trong database.
@@ -7,4 +7,4 @@ import type { ProjectRole, Task } from '../types';
 export const canManage = (role: ProjectRole) => role === 'owner';
 export const canCreateTask = (role: ProjectRole) => role === 'owner' || role === 'editor';
 export const canUpdateTask = (role: ProjectRole, userId: string, task: Task) =>
-  role === 'owner' || (role === 'editor' && task.assigneeId === userId);
+  role === 'owner' || (role === 'editor' && isAssignedTo(task, userId));

@@ -3,7 +3,7 @@ import Link from 'next/link';
 import { requireUser } from '@/lib/auth/session';
 import { listMyProjects, listTasksAndMilestonesFor } from '@/lib/data/queries';
 import { addDays, dueLabel, formatShort, todayISO } from '@/lib/dates';
-import { projectLabel, ROLE_LABEL, type ProjectWithRole, type Task } from '@/lib/types';
+import { isAssignedTo, projectLabel, ROLE_LABEL, type ProjectWithRole, type Task } from '@/lib/types';
 import { ProgressBar, StatusBadge } from '@/components/ui/badges';
 
 export default async function TodayPage({ searchParams }: { searchParams: Promise<{ welcome?: string; pw?: string }> }) {
@@ -15,7 +15,7 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const today = todayISO();
   const in7 = addDays(today, 7);
   const byId = new Map(projects.map((p) => [p.id, p]));
-  const mine = tasks.filter((t) => t.assigneeId === user.id && t.status !== 'done');
+  const mine = tasks.filter((t) => isAssignedTo(t, user.id) && t.status !== 'done');
 
   const overdue = mine.filter((t) => t.dueDate < today);
   const soon = mine.filter((t) => t.dueDate >= today && t.dueDate <= in7);

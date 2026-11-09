@@ -57,6 +57,8 @@ export interface Task {
   parentId: string | null;
   /** Việc chung của cả nhóm (không có người phụ trách riêng; chia subtask cho từng người) */
   isTeam: boolean;
+  /** Người cùng làm (ngoài người phụ trách chính) */
+  coAssigneeIds: string[];
   title: string;
   description: string | null;
   assigneeId: string | null;
@@ -131,3 +133,9 @@ export interface ProjectDocument {
   createdBy: string;
   createdAt: string;
 }
+
+/** Tất cả người phụ trách một việc: người chính trước, rồi người cùng làm */
+export const taskAssignees = (t: Pick<Task, 'assigneeId' | 'coAssigneeIds'>): string[] =>
+  t.assigneeId ? [t.assigneeId, ...t.coAssigneeIds.filter((id) => id !== t.assigneeId)] : [...t.coAssigneeIds];
+export const isAssignedTo = (t: Pick<Task, 'assigneeId' | 'coAssigneeIds'>, userId: string) =>
+  t.assigneeId === userId || t.coAssigneeIds.includes(userId);

@@ -113,17 +113,17 @@ export type Database = {
       tasks: {
         Row: {
           assignee_id: string | null; created_at: string; created_by: string; depends_on: string[]; description: string | null; due_date: string;
-          id: string; milestone_id: string | null; parent_id: string | null; is_team: boolean; progress: number; project_id: string; start_date: string; status: string; title: string;
+          id: string; milestone_id: string | null; parent_id: string | null; is_team: boolean; co_assignee_ids: string[]; progress: number; project_id: string; start_date: string; status: string; title: string;
           updated_at: string; updated_by: string | null; category: string;
         };
         Insert: {
           assignee_id?: string | null; created_at?: string; created_by?: string; depends_on?: string[]; description?: string | null; due_date: string;
-          id?: string; milestone_id?: string | null; parent_id?: string | null; is_team?: boolean; progress?: number; project_id: string; start_date: string; status?: string; title: string;
+          id?: string; milestone_id?: string | null; parent_id?: string | null; is_team?: boolean; co_assignee_ids?: string[]; progress?: number; project_id: string; start_date: string; status?: string; title: string;
           updated_at?: string; updated_by?: string | null; category?: string;
         };
         Update: {
           assignee_id?: string | null; created_at?: string; created_by?: string; depends_on?: string[]; description?: string | null; due_date?: string;
-          id?: string; milestone_id?: string | null; parent_id?: string | null; is_team?: boolean; progress?: number; project_id?: string; start_date?: string; status?: string; title?: string;
+          id?: string; milestone_id?: string | null; parent_id?: string | null; is_team?: boolean; co_assignee_ids?: string[]; progress?: number; project_id?: string; start_date?: string; status?: string; title?: string;
           updated_at?: string; updated_by?: string | null; category?: string;
         };
         Relationships: [

@@ -43,6 +43,7 @@ export const mapTask = (r: T['tasks']['Row']): Task => ({
   milestoneId: r.milestone_id,
   parentId: r.parent_id ?? null,
   isTeam: Boolean(r.is_team),
+  coAssigneeIds: r.co_assignee_ids ?? [],
   title: r.title,
   description: r.description,
   assigneeId: r.assignee_id,

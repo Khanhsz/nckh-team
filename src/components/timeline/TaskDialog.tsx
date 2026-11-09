@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useTransition } from 'react';
 import type { Member, Milestone, ProjectRole, Task, TaskCategory, TaskStatus } from '@/lib/types';
-import { TASK_CATEGORIES, TASK_CATEGORY_LABEL, TASK_STATUS_LABEL, TASK_STATUSES } from '@/lib/types';
+import { isAssignedTo, TASK_CATEGORIES, TASK_CATEGORY_LABEL, TASK_STATUS_LABEL, TASK_STATUSES } from '@/lib/types';
 import { CATEGORY_STYLE } from '@/components/ui/badges';
 import { diffDays, isValidISODate } from '@/lib/dates';
 import { createTaskQuickAction, deleteTaskByIdAction, updateTaskAction } from '@/app/(app)/projects/[id]/tasks/actions';
@@ -41,7 +41,7 @@ export function TaskDialog({
 }) {
   const isOwner = role === 'owner';
   const editing = state.mode === 'edit' ? state.task : null;
-  const canEdit = isOwner || (role === 'editor' && (!editing || editing.assigneeId === userId));
+  const canEdit = isOwner || (role === 'editor' && (!editing || isAssignedTo(editing, userId)));
 
   const [title, setTitle] = useState(editing?.title ?? (state.mode === 'create' ? state.title ?? '' : ''));
   const [milestoneId, setMilestoneId] = useState<string>(editing ? editing.milestoneId ?? '' : state.mode === 'create' ? state.milestoneId ?? '' : '');
@@ -54,6 +54,7 @@ export function TaskDialog({
   const [category, setCategory] = useState<TaskCategory>(editing?.category ?? (state.mode === 'create' ? state.category ?? 'task' : 'task'));
   const [dependsOn, setDependsOn] = useState<string[]>(editing?.dependsOn ?? []);
   const [parentId, setParentId] = useState<string>(editing ? editing.parentId ?? '' : state.mode === 'create' ? state.parentId ?? '' : '');
+  const [coIds, setCoIds] = useState<string[]>(editing?.coAssigneeIds ?? []);
   const [error, setError] = useState<string | null>(null);
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, start] = useTransition();
@@ -89,6 +90,8 @@ export function TaskDialog({
           if (wantTeam !== editing.isTeam) patch.isTeam = wantTeam;
           const wantAssignee = assigneeId === TEAM ? null : assigneeId || null;
           if (!wantTeam && wantAssignee !== editing.assigneeId) patch.assigneeId = wantAssignee;
+          const wantCo = wantTeam ? [] : coIds.filter((id) => id !== wantAssignee);
+          if (wantCo.slice().sort().join() !== editing.coAssigneeIds.slice().sort().join()) patch.coAssigneeIds = wantCo;
         }
         if (startDate !== editing.startDate) patch.startDate = startDate;
         if (dueDate !== editing.dueDate) patch.dueDate = dueDate;
@@ -105,6 +108,7 @@ export function TaskDialog({
           milestoneId: milestoneId || null,
           assigneeId: assigneeId === TEAM ? null : assigneeId || null,
           isTeam: assigneeId === TEAM && !parentId,
+          coAssigneeIds: assigneeId === TEAM ? [] : coIds.filter((id) => id !== assigneeId),
           startDate,
           dueDate,
           dependsOn,
@@ -217,6 +221,34 @@ export function TaskDialog({
               </select>
             </div>
           </div>
+
+          {assigneeId !== TEAM && (isOwner || coIds.length > 0) && (
+            <div>
+              <label className={label}>Người cùng làm {coIds.length > 0 && `(${coIds.length})`}</label>
+              <div className="flex flex-wrap gap-1.5">
+                {assignable
+                  .filter((m) => m.userId !== assigneeId)
+                  .filter((m) => isOwner || coIds.includes(m.userId))
+                  .map((m) => {
+                    const on = coIds.includes(m.userId);
+                    return (
+                      <button
+                        key={m.userId}
+                        type="button"
+                        aria-pressed={on}
+                        disabled={!isOwner}
+                        onClick={() => setCoIds((c) => (on ? c.filter((x) => x !== m.userId) : [...c, m.userId]))}
+                        className={`border px-2 py-0.5 text-xs ${on ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-line bg-white text-zinc-600 hover:bg-paper'} disabled:cursor-default`}
+                      >
+                        {on ? '✓ ' : '+ '}
+                        {m.displayName}
+                      </button>
+                    );
+                  })}
+              </div>
+              {isOwner && <p className="mt-0.5 text-[11px] text-zinc-500">Việc sẽ hiện ở làn của từng người trên Masterplan; ai cũng cập nhật được tiến độ.</p>}
+            </div>
+          )}
 
           <div className="grid grid-cols-3 gap-3">
             <div>

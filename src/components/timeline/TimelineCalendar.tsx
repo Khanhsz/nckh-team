@@ -3,7 +3,7 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent, type PointerEvent as RPE } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Member, Milestone, Project, ProjectRole, Task, TaskCategory } from '@/lib/types';
-import { TASK_CATEGORIES, TASK_CATEGORY_LABEL, TASK_STATUS_LABEL } from '@/lib/types';
+import { isAssignedTo, taskAssignees, TASK_CATEGORIES, TASK_CATEGORY_LABEL, TASK_STATUS_LABEL } from '@/lib/types';
 import { addDays, diffDays, formatFull, formatShort, maxDate, minDate, weekday } from '@/lib/dates';
 import { CATEGORY_STYLE } from '@/components/ui/badges';
 import { createTaskQuickAction, updateTaskAction } from '@/app/(app)/projects/[id]/tasks/actions';
@@ -48,7 +48,7 @@ interface Lane {
 }
 
 type Drag =
-  | { kind: 'move' | 'start' | 'end'; id: string; x0: number; y0: number; dDays: number; laneKey: string; moved: boolean }
+  | { kind: 'move' | 'start' | 'end'; id: string; x0: number; y0: number; dDays: number; laneKey: string; from: string; moved: boolean }
   | { kind: 'milestone'; id: string; x0: number; dDays: number; moved: boolean }
   | { kind: 'create'; laneKey: string; a: number; b: number };
 
@@ -247,7 +247,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     let top = 0;
     return defs.map((d) => {
       const own =
-        d.key === 'team' ? teamTasks : d.key === 'none' ? unassigned : d.key === 'others' ? others : tasks.filter((t) => !t.isTeam && t.assigneeId === d.memberId);
+        d.key === 'team' ? teamTasks : d.key === 'none' ? unassigned : d.key === 'others' ? others : tasks.filter((t) => !t.isTeam && d.memberId !== null && taskAssignees(t).includes(d.memberId));
       const { slots, rows } = pack(own);
       const height = PAD * 2 + (rows + 1) * CHIP_H + rows * GAP; // +1 tầng trống để quét tạo việc
       const lane = { ...d, tasks: own, slots, top, height };
@@ -257,7 +257,6 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   }, [members, tasks, userId, isOwner]);
   const bodyH = lanes.reduce((s, l) => s + l.height, 0);
   const laneByKey = new Map(lanes.map((l) => [l.key, l]));
-  const laneOfTask = (t: Task) => lanes.find((l) => l.slots.has(t.id))!;
 
   const canCreateIn = (lane: Lane) => isOwner || (!lane.team && role === 'editor' && lane.memberId === userId);
   const teamLane = lanes.find((l) => l.team);
@@ -270,9 +269,9 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     if (!h) return null;
     const root = h.parentId ?? h.id;
     const ids = new Set([root, ...tasks.filter((t) => t.parentId === root).map((t) => t.id)]);
-    return ids.size > 1 ? ids : null;
+    return ids.size > 1 || taskAssignees(h).length > 1 ? ids : null;
   })();
-  const canDragTask = (t: Task) => isOwner || (role === 'editor' && t.assigneeId === userId);
+  const canDragTask = (t: Task) => isOwner || (role === 'editor' && isAssignedTo(t, userId));
 
   // ---- Thang thời gian ----
   const months: { key: string; label: string; left: number; width: number }[] = [];
@@ -325,7 +324,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   };
 
   // ---- Kéo ô việc ----
-  const onChipDown = (e: RPE<HTMLDivElement>, t: Task) => {
+  const onChipDown = (e: RPE<HTMLDivElement>, t: Task, lane: Lane) => {
     if (e.button !== 0) return;
     e.stopPropagation();
     setQuick(null);
@@ -336,7 +335,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     const off = e.clientX - rect.left;
     const edge = Math.min(EDGE, rect.width / 3);
     const kind = off <= edge ? 'start' : off >= rect.width - edge ? 'end' : 'move';
-    setDrag({ kind, id: t.id, x0: e.clientX, y0: e.clientY, dDays: 0, laneKey: laneOfTask(t).key, moved: false });
+    setDrag({ kind, id: t.id, x0: e.clientX, y0: e.clientY, dDays: 0, laneKey: lane.key, from: lane.key, moved: false });
   };
   const onChipMove = (e: RPE<HTMLDivElement>, t: Task) => {
     if (!drag || (drag.kind !== 'move' && drag.kind !== 'start' && drag.kind !== 'end') || drag.id !== t.id) return;
@@ -355,7 +354,8 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     if (!drag || (drag.kind !== 'move' && drag.kind !== 'start' && drag.kind !== 'end') || drag.id !== t.id) return;
     const orig = tasks.find((x) => x.id === t.id)!;
     const next = preview(orig);
-    const fromLane = laneOfTask(orig).key;
+    const fromLane = drag.from;
+    const fromMember = laneByKey.get(fromLane)?.memberId ?? null;
     const toLane = laneByKey.get(drag.laneKey);
     const moved = drag.moved;
     setDrag(null);
@@ -364,16 +364,24 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     const reassigned = toLane && toLane.key !== fromLane;
     const datesChanged = next.startDate !== orig.startDate || next.dueDate !== orig.dueDate;
     if (!reassigned && !datesChanged) return;
-    const assigneeId = reassigned ? toLane!.memberId : orig.assigneeId;
+    // Đổi đúng "suất" của người ở làn xuất phát sang làn đích; những người cùng làm khác giữ nguyên
+    let people = taskAssignees(orig);
+    if (reassigned && !toLane!.team) {
+      if (!fromMember) people = toLane!.memberId ? [toLane!.memberId] : [];
+      else if (!toLane!.memberId) people = people.filter((id) => id !== fromMember);
+      else people = [...new Set(people.map((id) => (id === fromMember ? toLane!.memberId! : id)))];
+    }
     const isTeam = reassigned ? Boolean(toLane!.team) : orig.isTeam;
+    const assigneeId = isTeam ? null : people[0] ?? null;
+    const coAssigneeIds = isTeam ? [] : people.slice(1);
     const who = reassigned ? (toLane!.team ? 'cả nhóm' : toLane!.memberId ? toLane!.label.replace(' (bạn)', '') : 'Chưa giao') : null;
     run(
-      () => setTasks((ts) => ts.map((x) => (x.id === orig.id ? { ...x, startDate: next.startDate, dueDate: next.dueDate, assigneeId, isTeam } : x))),
+      () => setTasks((ts) => ts.map((x) => (x.id === orig.id ? { ...x, startDate: next.startDate, dueDate: next.dueDate, assigneeId, coAssigneeIds, isTeam } : x))),
       () => setTasks((ts) => ts.map((x) => (x.id === orig.id ? orig : x))),
       () =>
         updateTaskAction(orig.id, {
           ...(datesChanged ? { startDate: next.startDate, dueDate: next.dueDate } : {}),
-          ...(reassigned ? (isTeam ? { isTeam: true } : { assigneeId, isTeam: false }) : {})
+          ...(reassigned ? (isTeam ? { isTeam: true } : { assigneeId, coAssigneeIds, isTeam: false }) : {})
         }),
       `“${orig.title}”${datesChanged ? ` · ${formatShort(next.startDate)} → ${formatShort(next.dueDate)}` : ''}${who ? ` · giao cho ${who}` : ''}`
     );
@@ -426,6 +434,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
       milestoneId: ms?.id ?? null,
       parentId: null,
       isTeam: Boolean(lane?.team),
+      coAssigneeIds: [],
       title,
       description: null,
       assigneeId: isOwner ? lane?.memberId ?? null : userId,
@@ -511,13 +520,14 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     if (!t || !drag.moved) return null;
     const p = preview(t);
     const lane = laneByKey.get(drag.laneKey);
-    const reassign = lane && lane.key !== laneOfTask(t).key ? ` · giao cho ${lane.memberId ? lane.label.replace(' (bạn)', '') : 'Chưa giao'}` : '';
+    const reassign = lane && lane.key !== drag.from ? ` · giao cho ${lane.memberId ? lane.label.replace(' (bạn)', '') : 'Chưa giao'}` : '';
     return `${formatShort(p.startDate)} → ${formatShort(p.dueDate)} · ${diffDays(p.startDate, p.dueDate) + 1} ngày${reassign}`;
   })();
 
   const memberName = (id: string | null) => (id ? members.find((m) => m.userId === id)?.displayName ?? '—' : 'Chưa giao');
 
-  const renderChip = (t: Task, left: number, top: number, opts: { ghost?: boolean; dim?: boolean } = {}) => {
+  const renderChip = (t: Task, lane: Lane, left: number, top: number, opts: { ghost?: boolean; dim?: boolean } = {}) => {
+    const shared = taskAssignees(t).length;
     const w = Math.max((diffDays(t.startDate, t.dueDate) + 1) * dw - 2, 10);
     const overdue = t.status !== 'done' && t.dueDate < today;
     const draggable = canDragTask(t) && !t.id.startsWith('temp-');
@@ -528,7 +538,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     const tip = [
       t.title,
       `${formatFull(t.startDate)} → ${formatFull(t.dueDate)} (${diffDays(t.startDate, t.dueDate) + 1} ngày)`,
-      t.isTeam ? 'Phụ trách: Cả nhóm' : `Phụ trách: ${memberName(t.assigneeId)}`,
+      t.isTeam ? 'Phụ trách: Cả nhóm' : `Phụ trách: ${taskAssignees(t).map(memberName).join(', ') || 'Chưa giao'}`,
       ms ? `Mốc: ${ms.name}` : '',
       parent ? `Subtask của: ${parent.title}` : '',
       kids.length ? `${kids.length} subtask (${kids.filter((k) => k.status === 'done').length} xong)` : '',
@@ -538,10 +548,10 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
       .join('\n');
     return (
       <div
-        key={(opts.ghost ? 'ghost-' : '') + t.id}
+        key={(opts.ghost ? 'ghost-' : '') + lane.key + '-' + t.id}
         title={opts.ghost ? undefined : tip}
         data-task={opts.ghost ? undefined : t.id}
-        onPointerDown={opts.ghost ? undefined : (e) => onChipDown(e, t)}
+        onPointerDown={opts.ghost ? undefined : (e) => onChipDown(e, t, lane)}
         onPointerMove={opts.ghost ? undefined : (e) => onChipMove(e, t)}
         onPointerUp={opts.ghost ? undefined : () => onChipUp(t)}
         onPointerCancel={() => setDrag(null)}
@@ -562,8 +572,13 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
           {isSub && <span className="shrink-0 text-[11px] text-zinc-400">↳</span>}
           {t.isTeam && <span className="shrink-0 text-[11px]">👥</span>}
           <span className={`truncate ${isSub ? '' : 'font-medium'} ${t.status === 'done' ? 'line-through opacity-60' : ''}`}>{t.title}</span>
+          {shared > 1 && (
+            <span className="ml-auto shrink-0 rounded-full bg-zinc-900/80 px-1.5 text-[10px] font-semibold leading-4 text-white" title={`${shared} người cùng làm`}>
+              {shared}👤
+            </span>
+          )}
           {kids.length > 0 && (
-            <span className="ml-auto shrink-0 rounded-sm bg-white/70 px-1 text-[10px] font-semibold text-zinc-600">☰{kids.length}</span>
+            <span className={`${shared > 1 ? '' : 'ml-auto'} shrink-0 rounded-sm bg-white/70 px-1 text-[10px] font-semibold text-zinc-600`}>☰{kids.length}</span>
           )}
         </div>
         <div className={`pointer-events-none absolute bottom-0 left-0 h-[3px] ${CATEGORY_STYLE[t.category].fill}`} style={{ width: `${t.progress}%` }} />
@@ -579,7 +594,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
 
   // Ô đang kéo sang làn khác → vẽ "bóng" ở làn đích
   const movingTask = drag && drag.kind === 'move' && drag.moved ? tasks.find((t) => t.id === drag.id) : undefined;
-  const ghostLane = movingTask && drag && drag.kind === 'move' && drag.laneKey !== laneOfTask(movingTask).key ? laneByKey.get(drag.laneKey) : undefined;
+  const ghostLane = movingTask && drag && drag.kind === 'move' && drag.laneKey !== drag.from ? laneByKey.get(drag.laneKey) : undefined;
 
   return (
     <div className="space-y-2">
@@ -629,6 +644,10 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
           <span className="flex items-center gap-1">
             <span className="inline-flex h-3 w-5 items-center rounded-sm border border-l-[3px] border-zinc-400 border-l-zinc-600 bg-white text-[8px] leading-none text-zinc-500">↳</span>
             Subtask
+          </span>
+          <span className="flex items-center gap-1">
+            <span className="rounded-full bg-zinc-900/80 px-1.5 text-[10px] font-semibold leading-4 text-white">2👤</span>
+            Nhiều người cùng làm
           </span>
         </span>
       </div>
@@ -778,10 +797,10 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
                     )}
                     {lane.tasks.map((t) => {
                       const p = preview(t);
-                      const dim = ghostLane !== undefined && movingTask?.id === t.id;
-                      return renderChip(p, x(p.startDate), PAD + (lane.slots.get(t.id) ?? 0) * (CHIP_H + GAP), { dim });
+                      const dim = ghostLane !== undefined && movingTask?.id === t.id && drag?.kind === 'move' && drag.from === lane.key;
+                      return renderChip(p, lane, x(p.startDate), PAD + (lane.slots.get(t.id) ?? 0) * (CHIP_H + GAP), { dim });
                     })}
-                    {isTarget && movingTask && renderChip(preview(movingTask), x(preview(movingTask).startDate), PAD, { ghost: true })}
+                    {isTarget && movingTask && renderChip(preview(movingTask), lane, x(preview(movingTask).startDate), PAD, { ghost: true })}
 
                     {quick?.laneKey === lane.key && (
                       <div
