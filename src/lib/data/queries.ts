@@ -1,7 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { createClient } from '../supabase/server';
-import type { JournalFlag, WatchItem, Member, Milestone, Paper, PaperCredibility, ProjectDocument, ProjectWithRole, Task } from '../types';
+import type { JournalFlag, WatchItem, Meeting, Member, Milestone, Paper, PaperCredibility, ProjectDocument, ProjectWithRole, Task } from '../types';
 import { asRole, mapMilestone, mapPaper, mapProject, mapTask } from './mappers';
 import type { RefItem } from '../scholar/publication';
 import type { RefMeta } from '../library/missing';
@@ -50,6 +50,26 @@ export const listMembers = cache(async (projectId: string): Promise<Member[]> =>
       email: byId.get(r.user_id)?.email ?? null
     }))
     .sort((a, b) => order[a.role] - order[b.role] || a.displayName.localeCompare(b.displayName, 'vi'));
+});
+
+export const listMeetings = cache(async (projectId: string): Promise<Meeting[]> => {
+  const sb = await createClient();
+  const { data, error } = await sb.from('meetings').select('*').eq('project_id', projectId).order('starts_at');
+  if (error) throw error;
+  return (data ?? []).map((r) => ({
+    id: r.id,
+    projectId: r.project_id,
+    title: r.title,
+    startsAt: r.starts_at,
+    endsAt: r.ends_at,
+    location: r.location,
+    meetUrl: r.meet_url,
+    notes: r.notes,
+    attendeeIds: r.attendee_ids,
+    guestEmails: r.guest_emails,
+    sequence: r.sequence,
+    createdBy: r.created_by
+  }));
 });
 
 export const listMilestones = cache(async (projectId: string): Promise<Milestone[]> => {

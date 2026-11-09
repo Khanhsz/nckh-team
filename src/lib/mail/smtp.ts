@@ -48,6 +48,8 @@ export interface Mail {
   subject: string;
   text: string;
   html: string;
+  /** Lời mời lịch (iCalendar). Gmail/Outlook hiện thẻ sự kiện kèm nút thêm vào lịch. */
+  calendar?: { method: 'REQUEST' | 'CANCEL'; ics: string };
 }
 
 /** Gửi nhiều email trong một phiên SMTP. Trả về số email gửi được và lỗi (nếu có). */
@@ -77,28 +79,52 @@ export async function sendMails(mails: Mail[]): Promise<{ sent: number; errors: 
     for (const m of mails) {
       try {
         const boundary = `b${Date.now().toString(36)}${Math.random().toString(36).slice(2)}`;
-        const msg = [
+        const alt = `a${boundary}`;
+        const head = [
           `From: ${encHeader(fromName)} <${user}>`,
           `To: <${m.to}>`,
           `Subject: ${encHeader(m.subject)}`,
           `Date: ${new Date().toUTCString()}`,
           `Message-ID: <${boundary}@nckh-team.vercel.app>`,
-          'MIME-Version: 1.0',
-          `Content-Type: multipart/alternative; boundary="${boundary}"`,
-          '',
-          `--${boundary}`,
+          'MIME-Version: 1.0'
+        ];
+        const altParts = [
+          `--${alt}`,
           'Content-Type: text/plain; charset=UTF-8',
           'Content-Transfer-Encoding: base64',
           '',
           wrap76(b64(m.text)),
-          `--${boundary}`,
+          `--${alt}`,
           'Content-Type: text/html; charset=UTF-8',
           'Content-Transfer-Encoding: base64',
           '',
-          wrap76(b64(m.html)),
-          `--${boundary}--`,
-          ''
-        ].join('\r\n');
+          wrap76(b64(m.html))
+        ];
+        const msg = m.calendar
+          ? [
+              ...head,
+              `Content-Type: multipart/mixed; boundary="${boundary}"`,
+              '',
+              `--${boundary}`,
+              `Content-Type: multipart/alternative; boundary="${alt}"`,
+              '',
+              ...altParts,
+              `--${alt}`,
+              `Content-Type: text/calendar; charset=UTF-8; method=${m.calendar.method}`,
+              'Content-Transfer-Encoding: base64',
+              '',
+              wrap76(b64(m.calendar.ics)),
+              `--${alt}--`,
+              `--${boundary}`,
+              `Content-Type: application/ics; name="invite.ics"`,
+              'Content-Disposition: attachment; filename="invite.ics"',
+              'Content-Transfer-Encoding: base64',
+              '',
+              wrap76(b64(m.calendar.ics)),
+              `--${boundary}--`,
+              ''
+            ].join('\r\n')
+          : [...head, `Content-Type: multipart/alternative; boundary="${alt}"`, '', ...altParts, `--${alt}--`, ''].join('\r\n');
         await s.cmd(`MAIL FROM:<${user}>`, 250);
         await s.cmd(`RCPT TO:<${m.to}>`, 250);
         await s.cmd('DATA', 354);

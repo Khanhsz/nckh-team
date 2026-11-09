@@ -17,7 +17,7 @@ const nextDay = (iso: string) => {
   d.setUTCDate(d.getUTCDate() + 1);
   return d.toISOString().slice(0, 10).replace(/-/g, '');
 };
-const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
+const esc = (s: string) => s.replace(/\\/g, '\\\\').replace(/;/g, '\\;').replace(/,/g, '\\,').replace(/\r?\n/g, '\\n');
 /** Gập dòng 75 octet theo RFC 5545 */
 function fold(line: string): string {
   const bytes = Buffer.from(line, 'utf8');

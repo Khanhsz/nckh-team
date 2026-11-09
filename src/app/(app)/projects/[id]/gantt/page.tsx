@@ -1,7 +1,8 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
-import { getProjectForUser, listMembers, listMilestones, listTasks } from '@/lib/data/queries';
+import { getProjectForUser, listMeetings, listMembers, listMilestones, listTasks } from '@/lib/data/queries';
+import { smtpConfigured } from '@/lib/mail/smtp';
 import { todayISO } from '@/lib/dates';
 import { TimelineCalendar } from '@/components/timeline/TimelineCalendar';
 
@@ -11,15 +12,15 @@ export default async function GanttPage({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ created?: string; joined?: string }>;
+  searchParams: Promise<{ created?: string; joined?: string; meeting?: string }>;
 }) {
   const { id } = await params;
-  const { created, joined } = await searchParams;
+  const { created, joined, meeting } = await searchParams;
 
   const user = await requireUser();
   const project = await getProjectForUser(id, user.id);
   if (!project) notFound();
-  const [milestones, tasks, members] = await Promise.all([listMilestones(id), listTasks(id), listMembers(id)]);
+  const [milestones, tasks, members, meetings] = await Promise.all([listMilestones(id), listTasks(id), listMembers(id), listMeetings(id)]);
 
   const today = todayISO();
   const isOwner = project.role === 'owner';
@@ -55,6 +56,9 @@ export default async function GanttPage({
           role={project.role}
           userId={user.id}
           today={today}
+          meetings={meetings}
+          smtpReady={smtpConfigured()}
+          openMeetingId={meeting}
         />
       )}
 

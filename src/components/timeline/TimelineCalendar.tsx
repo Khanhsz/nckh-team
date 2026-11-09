@@ -2,7 +2,7 @@
 
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent, type PointerEvent as RPE } from 'react';
 import { useRouter } from 'next/navigation';
-import type { Member, Milestone, Project, ProjectRole, Task, TaskCategory } from '@/lib/types';
+import type { Meeting, Member, Milestone, Project, ProjectRole, Task, TaskCategory } from '@/lib/types';
 import { isAssignedTo, taskAssignees, TASK_CATEGORIES, TASK_CATEGORY_LABEL, TASK_STATUS_LABEL } from '@/lib/types';
 import { addDays, diffDays, formatFull, formatShort, maxDate, minDate, weekday } from '@/lib/dates';
 import { Icon } from '@/components/ui/Icon';
@@ -10,6 +10,7 @@ import { CATEGORY_STYLE } from '@/components/ui/badges';
 import { createTaskQuickAction, updateTaskAction } from '@/app/(app)/projects/[id]/tasks/actions';
 import { updateMilestoneAction } from '@/app/(app)/projects/[id]/settings/actions';
 import { TaskDialog, type DialogState } from './TaskDialog';
+import { MeetingDialog, vnParts } from './MeetingDialog';
 
 /**
  * Timeline lịch nằm ngang — mỗi làn là một thành viên.
@@ -30,6 +31,7 @@ const LEFT_W = 168;
 const SCALE_H_BIG = 78; // tháng + thứ + số ngày lớn (khi ngày đủ rộng)
 const SCALE_H_SMALL = 50;
 const MS_H = 30;
+const MEET_H = 28;
 const CHIP_H = 26;
 const GAP = 4;
 const PAD = 6;
@@ -79,9 +81,25 @@ interface Props {
   role: ProjectRole;
   userId: string;
   today: string;
+  meetings?: Meeting[];
+  smtpReady?: boolean;
+  /** Mở sẵn một cuộc họp (từ link trong email) */
+  openMeetingId?: string;
 }
 
-export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp, members, initialZoom = 'month', role, userId, today }: Props) {
+export function TimelineCalendar({
+  project,
+  milestones: msProp,
+  tasks: tasksProp,
+  members,
+  initialZoom = 'month',
+  role,
+  userId,
+  today,
+  meetings = [],
+  smtpReady = false,
+  openMeetingId
+}: Props) {
   const router = useRouter();
   const [tasks, setTasks] = useState(tasksProp);
   const [milestones, setMilestones] = useState(msProp);
@@ -90,8 +108,12 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   const [quickTitle, setQuickTitle] = useState('');
   const [quickCategory, setQuickCategory] = useState<TaskCategory>('task');
   const [dialog, setDialog] = useState<DialogState | null>(null);
+  const [meetingDialog, setMeetingDialog] = useState<{ meeting: Meeting | null; date: string } | null>(() => {
+    const m = openMeetingId ? meetings.find((x) => x.id === openMeetingId) : undefined;
+    return m ? { meeting: m, date: vnParts(m.startsAt).date } : null;
+  });
   const dialogOpenRef = useRef(false);
-  dialogOpenRef.current = dialog !== null;
+  dialogOpenRef.current = dialog !== null || meetingDialog !== null;
   const [flash, setFlash] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
   const [saving, startTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -303,6 +325,17 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
     });
   }, [members, tasks, userId, isOwner]);
   const bodyH = lanes.reduce((s, l) => s + l.height, 0);
+  const canMeet = role !== 'viewer';
+  const showMeetRow = meetings.length > 0 || canMeet;
+  const stripH = MS_H + (showMeetRow ? MEET_H : 0);
+  // Nhiều cuộc họp cùng ngày: xếp lệch nhẹ để thấy có nhiều hơn một
+  const perDay = new Map<string, number>();
+  const meetingChips = meetings.map((m) => {
+    const p = vnParts(m.startsAt);
+    const row = perDay.get(p.date) ?? 0;
+    perDay.set(p.date, row + 1);
+    return { m, day: p.date, time: p.time, row };
+  });
   const laneByKey = new Map(lanes.map((l) => [l.key, l]));
 
   const canCreateIn = (lane: Lane) => isOwner || (!lane.team && role === 'editor' && lane.memberId === userId);
@@ -749,6 +782,15 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
         </div>
 
         <div className="flex items-center gap-1">
+          {canMeet && (
+            <button
+              onClick={() => setMeetingDialog({ meeting: null, date: today })}
+              className="mr-2 flex h-9 items-center gap-1.5 rounded-full border border-ink-3/50 pl-3 pr-4 text-sm font-medium text-ink-2 hover:bg-paper-2"
+            >
+              <Icon name="plus" size={18} className="text-[#8e24aa]" />
+              Đặt lịch họp
+            </button>
+          )}
           <div className="flex overflow-hidden rounded-full border border-ink-3/50 text-sm" role="group" aria-label="Chế độ xem">
             {(Object.keys(PRESET_DAYS) as TimelineZoom[]).map((z) => {
               const on = Math.abs(dw - viewW / PRESET_DAYS[z]) < 0.6;
@@ -845,16 +887,32 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
           });
         }}
         className={`thin-scroll overflow-auto rounded-2xl border border-line bg-white ${drag ? 'select-none' : ''} ${full ? 'min-h-0 flex-1' : ''}`}
-        style={full ? undefined : { height: frameH === null ? 'calc(100vh - 200px)' : Math.min(frameH, scaleH + MS_H + bodyH + 2) }}
+        style={full ? undefined : { height: frameH === null ? 'calc(100vh - 200px)' : Math.min(frameH, scaleH + stripH + bodyH + 2) }}
       >
         <div className="relative" style={{ width: LEFT_W + width }}>
           {/* ===== Header: tháng · ngày · dải mốc ===== */}
-          <div className="sticky top-0 z-30 flex border-b border-line bg-white" style={{ height: scaleH + MS_H }}>
+          <div className="sticky top-0 z-30 flex border-b border-line bg-white" style={{ height: scaleH + stripH }}>
             <div className="sticky left-0 z-40 flex flex-col justify-end border-r border-line bg-white" style={{ width: LEFT_W, minWidth: LEFT_W }}>
               <div className="flex items-center gap-2 px-4 text-xs text-ink-3" style={{ height: MS_H }}>
                 <span className="block h-2 w-2 rotate-45 rounded-[1px] bg-primary" aria-hidden />
                 Mốc
               </div>
+              {showMeetRow && (
+                <div className="flex items-center gap-2 border-t border-line px-4 text-xs text-ink-3" style={{ height: MEET_H }}>
+                  <span className="block h-2 w-2 rounded-full bg-[#8e24aa]" aria-hidden />
+                  Họp
+                  {canMeet && (
+                    <button
+                      onClick={() => setMeetingDialog({ meeting: null, date: today })}
+                      className="ml-auto flex h-6 w-6 items-center justify-center text-ink-3 hover:bg-paper-2 hover:text-ink-2"
+                      title="Đặt lịch họp"
+                      aria-label="Đặt lịch họp"
+                    >
+                      <Icon name="plus" size={15} />
+                    </button>
+                  )}
+                </div>
+              )}
             </div>
             <div className="relative" style={{ width }}>
               {months.map((m) => (
@@ -904,6 +962,34 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
                 onPointerUp={onScaleUp}
                 onPointerCancel={onScaleUp}
               />
+              {/* Dải họp: bấm ô trống để đặt họp ngày đó, bấm cuộc họp để xem/sửa */}
+              {showMeetRow && (
+                <div
+                  className={`absolute left-0 border-t border-line bg-white ${canMeet ? 'cursor-pointer' : ''}`}
+                  style={{ top: scaleH + MS_H, height: MEET_H, width }}
+                  onClick={(e) => {
+                    if (!canMeet || e.target !== e.currentTarget) return;
+                    const d = Math.floor((e.clientX - e.currentTarget.getBoundingClientRect().left) / dw);
+                    setMeetingDialog({ meeting: null, date: addDays(start, d) });
+                  }}
+                  title={canMeet ? 'Bấm vào một ngày để đặt lịch họp' : undefined}
+                >
+                  {meetingChips.map(({ m, day, time, row }) => (
+                    <button
+                      key={m.id}
+                      onClick={() => setMeetingDialog({ meeting: m, date: day })}
+                      title={`${m.title}, ${time}${m.location ? `, ${m.location}` : ''}`}
+                      className={`absolute flex h-[22px] items-center gap-1 overflow-hidden whitespace-nowrap rounded-md px-1.5 text-[11px] font-medium ${
+                        day < today ? 'bg-paper-2 text-ink-3' : 'bg-[#f3e1fa] text-[#3b0a52] hover:shadow-[0_1px_3px_rgba(60,64,67,.3)]'
+                      }`}
+                      style={{ left: x(day) + 2 + row * 8, top: 3 + row * 2, zIndex: row, maxWidth: Math.max(dw * 3, 150), minWidth: Math.min(dw - 4, 60) }}
+                    >
+                      <span className="tabular-nums opacity-75">{time}</span>
+                      <span className="truncate">{m.title}</span>
+                    </button>
+                  ))}
+                </div>
+              )}
               {/* Dải mốc */}
               <div className="absolute left-0 border-t border-line bg-white" style={{ top: scaleH, height: MS_H, width }}>
                 {viewMilestones.map((m) => (
@@ -957,7 +1043,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
                       ? `sticky z-[25] flex w-full border-b border-line shadow-[0_1px_3px_rgba(60,64,67,.15)] ${isTarget ? 'bg-primary-container/60' : 'bg-paper'}`
                       : `absolute flex w-full border-b border-line/70 ${isTarget ? 'bg-primary-container/30' : ''}`
                   }
-                  style={lane.team ? { top: scaleH + MS_H, height: lane.height } : { top: lane.top, height: lane.height }}
+                  style={lane.team ? { top: scaleH + stripH, height: lane.height } : { top: lane.top, height: lane.height }}
                 >
                   <div
                     className={`sticky left-0 z-20 flex flex-col justify-center border-r border-line px-3 ${lane.team ? 'bg-paper' : 'bg-white'}`}
@@ -1074,6 +1160,24 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
         </div>
       </div>
 
+      {meetingDialog && (
+        <MeetingDialog
+          key={meetingDialog.meeting?.id ?? `new-${meetingDialog.date}`}
+          projectId={project.id}
+          members={members}
+          userId={userId}
+          role={role}
+          meeting={meetingDialog.meeting}
+          defaultDate={meetingDialog.date}
+          smtpReady={smtpReady}
+          onClose={() => setMeetingDialog(null)}
+          onDone={(text) => {
+            setMeetingDialog(null);
+            setFlash({ type: 'ok', text });
+            router.refresh();
+          }}
+        />
+      )}
       {dialog && (
         <TaskDialog
           state={dialog}

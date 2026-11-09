@@ -48,6 +48,22 @@ export interface Member {
   email: string | null;
 }
 
+export interface Meeting {
+  id: string;
+  projectId: string;
+  title: string;
+  /** ISO có múi giờ */
+  startsAt: string;
+  endsAt: string;
+  location: string | null;
+  meetUrl: string | null;
+  notes: string | null;
+  attendeeIds: string[];
+  guestEmails: string[];
+  sequence: number;
+  createdBy: string;
+}
+
 export interface Milestone {
   id: string;
   projectId: string;

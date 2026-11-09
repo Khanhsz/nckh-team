@@ -13,6 +13,12 @@ export type Database = {
         Update: { action?: string; usage_date?: string; used?: number; user_id?: string };
         Relationships: [];
       };
+      meetings: {
+        Row: { id: string; project_id: string; title: string; starts_at: string; ends_at: string; location: string | null; meet_url: string | null; notes: string | null; attendee_ids: string[]; guest_emails: string[]; sequence: number; created_by: string; created_at: string; updated_at: string };
+        Insert: { id?: string; project_id: string; title: string; starts_at: string; ends_at: string; location?: string | null; meet_url?: string | null; notes?: string | null; attendee_ids?: string[]; guest_emails?: string[]; created_by?: string };
+        Update: { title?: string; starts_at?: string; ends_at?: string; location?: string | null; meet_url?: string | null; notes?: string | null; attendee_ids?: string[]; guest_emails?: string[] };
+        Relationships: [];
+      };
       milestones: {
         Row: { created_at: string; due_date: string; id: string; name: string; project_id: string; sort_order: number };
         Insert: { created_at?: string; due_date: string; id?: string; name: string; project_id: string; sort_order?: number };
