@@ -92,6 +92,38 @@ export interface Paper {
   warnings: string[];
   /** field key → người xác nhận */
   verified: Record<string, { by: string; at: string }>;
+  /** Thông tin xuất bản (Gemini đọc từ PDF, bổ sung bằng Crossref) */
+  pub: PaperPublication;
+}
+
+export interface PaperPublication {
+  doi: string | null;
+  journal: string | null;
+  issns: string[];
+  publisher: string | null;
+  year: number | null;
+  citedBy: number | null;
+  source: string | null;
+  checkedAt: string | null;
+}
+
+export type JournalFlagKind = 'scopus_discontinued' | 'beall_journal' | 'beall_publisher';
+export interface JournalFlag {
+  kind: JournalFlagKind;
+  title: string | null;
+  publisher: string | null;
+  reason: string | null;
+  since: string | null;
+}
+/** Độ tin cậy của một bài: hạng tạp chí (SCImago) + cảnh báo */
+export interface PaperCredibility {
+  quartile: 'Q1' | 'Q2' | 'Q3' | 'Q4' | null;
+  sjr: number | null;
+  hIndex: number | null;
+  categories: string | null;
+  rankYear: number | null;
+  rankTitle: string | null;
+  flags: JournalFlag[];
 }
 
 export const PAPER_STATUS_LABEL: Record<PaperStatus, string> = {

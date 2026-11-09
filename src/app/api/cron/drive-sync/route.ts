@@ -4,12 +4,13 @@ import { createClient as createSupabase } from '@supabase/supabase-js';
 import type { Database } from '@/lib/supabase/database.types';
 import { supabaseEnv } from '@/lib/supabase/env';
 import { listPdfs } from '@/lib/google/drive';
+import { resolvePublication } from '@/lib/scholar/publication';
 
 /**
- * Được pg_cron (Supabase) gọi mỗi 5 phút. Quét thư mục Drive của mọi dự án đã kết nối
+ * Được pg_cron (Supabase) gọi mỗi 12 giờ (07:17 và 19:17 giờ VN). Quét thư mục Drive của mọi dự án đã kết nối
  * và ghi danh sách PDF qua hàm SECURITY DEFINER có kiểm tra khoá bí mật — không cần service_role key.
  */
-export const maxDuration = 60;
+export const maxDuration = 120;
 export const dynamic = 'force-dynamic';
 
 function secretMatches(given: string | null): boolean {
@@ -46,5 +47,29 @@ export async function POST(request: NextRequest) {
       results.push({ project: p.project_id, error: e instanceof Error ? e.message.slice(0, 200) : 'error' });
     }
   }
-  return NextResponse.json({ ok: true, projects: results.length, results });
+  // Tra thông tin xuất bản cho bài mới (Crossref, miễn phí) — giới hạn theo thời gian còn lại
+  const started = Date.now();
+  let resolved = 0;
+  const { data: pending } = await supabase.rpc('cron_papers_needing_meta', { p_secret: secret!, p_limit: 40 });
+  for (const p of pending ?? []) {
+    if (Date.now() - started > 70_000) break;
+    try {
+      const meta = await resolvePublication({
+        doi: p.doi,
+        journal: p.journal,
+        issns: p.issns,
+        title: p.info ? null : p.file_name.replace(/\.pdf$/i, '').replace(/_+/g, ' '),
+        bibliographic: p.info
+      });
+      await supabase.rpc('cron_set_paper_meta', {
+        p_secret: secret!,
+        p_id: p.id,
+        p_meta: { ...meta, issns: meta.issns }
+      });
+      resolved++;
+    } catch {
+      /* bỏ qua, lần sau thử lại */
+    }
+  }
+  return NextResponse.json({ ok: true, projects: results.length, results, resolved });
 }

@@ -84,7 +84,17 @@ export const mapPaper = (r: T['papers']['Row']): Paper => {
     error: r.error,
     fields,
     warnings: Array.isArray(r.warnings) ? r.warnings.filter((w): w is string => typeof w === 'string') : [],
-    verified
+    verified,
+    pub: {
+      doi: r.doi ?? null,
+      journal: r.journal ?? null,
+      issns: r.issns ?? [],
+      publisher: r.publisher ?? null,
+      year: r.pub_year ?? null,
+      citedBy: r.cited_by ?? null,
+      source: r.meta_source ?? null,
+      checkedAt: r.meta_checked_at ?? null
+    }
   };
 };
 

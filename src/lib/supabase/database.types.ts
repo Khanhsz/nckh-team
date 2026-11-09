@@ -21,21 +21,36 @@ export type Database = {
           { foreignKeyName: 'milestones_project_id_fkey'; columns: ['project_id']; isOneToOne: false; referencedRelation: 'projects'; referencedColumns: ['id'] }
         ];
       };
+      journal_ranks: {
+        Row: { sourceid: number; title: string; title_norm: string | null; issns: string[]; sjr: number | null; quartile: string | null; h_index: number | null; categories: string | null; publisher: string | null; rank_year: number | null; updated_at: string };
+        Insert: { sourceid: number; title: string; issns?: string[]; sjr?: number | null; quartile?: string | null; h_index?: number | null; categories?: string | null; publisher?: string | null; rank_year?: number | null; updated_at?: string };
+        Update: { sourceid?: number; title?: string; issns?: string[]; sjr?: number | null; quartile?: string | null; h_index?: number | null; categories?: string | null; publisher?: string | null; rank_year?: number | null; updated_at?: string };
+        Relationships: [];
+      };
+      journal_flags: {
+        Row: { id: number; kind: string; title: string | null; title_norm: string | null; issns: string[]; publisher: string | null; publisher_norm: string | null; reason: string | null; since: string | null; updated_at: string };
+        Insert: { id?: number; kind: string; title?: string | null; issns?: string[]; publisher?: string | null; reason?: string | null; since?: string | null; updated_at?: string };
+        Update: { id?: number; kind?: string; title?: string | null; issns?: string[]; publisher?: string | null; reason?: string | null; since?: string | null; updated_at?: string };
+        Relationships: [];
+      };
       papers: {
         Row: {
           created_at: string; created_by: string; error: string | null; evidence: Json; fields: Json; file_name: string; id: string;
           model: string | null; project_id: string; status: string; storage_path: string | null; updated_at: string; updated_by: string | null; warnings: Json;
           drive_file_id: string | null; drive_modified_time: string | null; drive_web_link: string | null; file_size: number | null; extracted_at: string | null; verified: Json;
+          doi: string | null; journal: string | null; issns: string[]; publisher: string | null; pub_year: number | null; cited_by: number | null; meta_source: string | null; meta_checked_at: string | null; journal_norm: string | null; publisher_norm: string | null;
         };
         Insert: {
           created_at?: string; created_by?: string; error?: string | null; evidence?: Json; fields?: Json; file_name: string; id?: string;
           model?: string | null; project_id: string; status?: string; storage_path?: string | null; updated_at?: string; updated_by?: string | null; warnings?: Json;
           drive_file_id?: string | null; drive_modified_time?: string | null; drive_web_link?: string | null; file_size?: number | null; extracted_at?: string | null; verified?: Json;
+          doi?: string | null; journal?: string | null; issns?: string[]; publisher?: string | null; pub_year?: number | null; cited_by?: number | null; meta_source?: string | null; meta_checked_at?: string | null;
         };
         Update: {
           created_at?: string; created_by?: string; error?: string | null; evidence?: Json; fields?: Json; file_name?: string; id?: string;
           model?: string | null; project_id?: string; status?: string; storage_path?: string | null; updated_at?: string; updated_by?: string | null; warnings?: Json;
           drive_file_id?: string | null; drive_modified_time?: string | null; drive_web_link?: string | null; file_size?: number | null; extracted_at?: string | null; verified?: Json;
+          doi?: string | null; journal?: string | null; issns?: string[]; publisher?: string | null; pub_year?: number | null; cited_by?: number | null; meta_source?: string | null; meta_checked_at?: string | null;
         };
         Relationships: [
           { foreignKeyName: 'papers_project_id_fkey'; columns: ['project_id']; isOneToOne: false; referencedRelation: 'projects'; referencedColumns: ['id'] }
@@ -138,6 +153,16 @@ export type Database = {
       cron_drive_projects: { Args: { p_secret: string }; Returns: { project_id: string; folder_id: string }[] };
       cron_apply_drive_listing: { Args: { p_secret: string; p_project_id: string; p_files: Json }; Returns: Json };
       mark_drive_synced: { Args: { p_project_id: string }; Returns: undefined };
+      paper_credibility: {
+        Args: { p_project: string };
+        Returns: { paper_id: string; quartile: string | null; sjr: number | null; h_index: number | null; categories: string | null; rank_year: number | null; rank_title: string | null; flags: Json }[];
+      };
+      cron_papers_needing_meta: {
+        Args: { p_secret: string; p_limit?: number };
+        Returns: { id: string; file_name: string; info: string | null; doi: string | null; journal: string | null; issns: string[] }[];
+      };
+      cron_set_paper_meta: { Args: { p_secret: string; p_id: string; p_meta: Json }; Returns: undefined };
+      is_any_project_owner: { Args: Record<string, never>; Returns: boolean };
       consume_ai_quota: { Args: { p_action: string; p_project_id: string }; Returns: boolean };
       create_project_invite: { Args: { p_project_id: string; p_role?: string }; Returns: string };
       project_can_edit: { Args: { p_project_id: string }; Returns: boolean };

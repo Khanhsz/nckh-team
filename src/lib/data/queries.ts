@@ -1,7 +1,7 @@
 import 'server-only';
 import { cache } from 'react';
 import { createClient } from '../supabase/server';
-import type { Member, Milestone, Paper, ProjectDocument, ProjectWithRole, Task } from '../types';
+import type { JournalFlag, Member, Milestone, Paper, PaperCredibility, ProjectDocument, ProjectWithRole, Task } from '../types';
 import { asRole, mapMilestone, mapPaper, mapProject, mapTask } from './mappers';
 
 /**
@@ -93,6 +93,30 @@ export const listPapers = cache(async (projectId: string): Promise<Paper[]> => {
   return (data ?? []).map(mapPaper);
 });
 
+/** Độ tin cậy (hạng Q, SJR, cảnh báo) của mọi bài trong dự án, theo paper id */
+export const listPaperCredibility = cache(async (projectId: string): Promise<Map<string, PaperCredibility>> => {
+  const sb = await createClient();
+  const { data, error } = await sb.rpc('paper_credibility', { p_project: projectId });
+  if (error) {
+    console.error('paper_credibility', error.message);
+    return new Map();
+  }
+  const map = new Map<string, PaperCredibility>();
+  for (const r of data ?? []) {
+    const flags = Array.isArray(r.flags) ? (r.flags as unknown as JournalFlag[]) : [];
+    map.set(r.paper_id, {
+      quartile: r.quartile === 'Q1' || r.quartile === 'Q2' || r.quartile === 'Q3' || r.quartile === 'Q4' ? r.quartile : null,
+      sjr: r.sjr === null ? null : Number(r.sjr),
+      hIndex: r.h_index,
+      categories: r.categories,
+      rankYear: r.rank_year,
+      rankTitle: r.rank_title,
+      flags
+    });
+  }
+  return map;
+});
+
 export const getPaper = cache(async (paperId: string): Promise<Paper | null> => {
   if (!/^[0-9a-f-]{36}$/i.test(paperId)) return null;
   const sb = await createClient();
@@ -121,3 +145,29 @@ export const listDocuments = cache(async (projectId: string): Promise<ProjectDoc
     createdAt: r.created_at
   }));
 });
+
+export interface CatalogStatus {
+  sjr: { count: number; year: number | null; updatedAt: string | null };
+  scopus: { count: number; updatedAt: string | null };
+  beall: { publishers: number; journals: number; updatedAt: string | null };
+}
+
+/** Tình trạng danh mục tạp chí dùng chung */
+export async function getCatalogStatus(): Promise<CatalogStatus> {
+  const sb = await createClient();
+  const count = async (q: PromiseLike<{ count: number | null }>) => (await q).count ?? 0;
+  const [sjrCount, sjrLatest, scCount, scLatest, bp, bj, bLatest] = await Promise.all([
+    count(sb.from('journal_ranks').select('sourceid', { count: 'exact', head: true })),
+    sb.from('journal_ranks').select('rank_year, updated_at').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+    count(sb.from('journal_flags').select('id', { count: 'exact', head: true }).eq('kind', 'scopus_discontinued')),
+    sb.from('journal_flags').select('updated_at').eq('kind', 'scopus_discontinued').order('updated_at', { ascending: false }).limit(1).maybeSingle(),
+    count(sb.from('journal_flags').select('id', { count: 'exact', head: true }).eq('kind', 'beall_publisher')),
+    count(sb.from('journal_flags').select('id', { count: 'exact', head: true }).eq('kind', 'beall_journal')),
+    sb.from('journal_flags').select('updated_at').in('kind', ['beall_publisher', 'beall_journal']).order('updated_at', { ascending: false }).limit(1).maybeSingle()
+  ]);
+  return {
+    sjr: { count: sjrCount, year: sjrLatest.data?.rank_year ?? null, updatedAt: sjrLatest.data?.updated_at ?? null },
+    scopus: { count: scCount, updatedAt: scLatest.data?.updated_at ?? null },
+    beall: { publishers: bp, journals: bj, updatedAt: bLatest.data?.updated_at ?? null }
+  };
+}

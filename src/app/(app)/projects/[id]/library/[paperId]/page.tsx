@@ -1,13 +1,23 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
-import { getPaper, getProjectForUser, listMembers } from '@/lib/data/queries';
+import { getPaper, getProjectForUser, listMembers, listPaperCredibility } from '@/lib/data/queries';
+import { CredibilityCell } from '@/components/library/Credibility';
+import { PublicationEditor } from '@/components/library/PublicationEditor';
 import { geminiConfigured } from '@/lib/ai/extract';
 import { PAPER_FIELDS } from '@/lib/ai/fields';
 import { PAPER_STATUS_LABEL } from '@/lib/types';
 import { ExtractOneButton, PaperFieldEditor } from '@/components/library/PaperFieldEditor';
 
 export const maxDuration = 300;
+
+const SOURCE_LABEL: Record<string, string> = {
+  gemini: 'AI đọc từ PDF',
+  crossref: 'Crossref',
+  'gemini+crossref': 'AI đọc từ PDF + Crossref',
+  manual: 'Nhập tay',
+  none: 'Chưa tìm thấy'
+};
 
 export default async function PaperPage({ params }: { params: Promise<{ id: string; paperId: string }> }) {
   const { id, paperId } = await params;
@@ -16,7 +26,8 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
   if (!project) notFound();
   const paper = await getPaper(paperId);
   if (!paper || paper.projectId !== id) notFound();
-  const members = await listMembers(id);
+  const [members, credMap] = await Promise.all([listMembers(id), listPaperCredibility(id)]);
+  const cred = credMap.get(paper.id);
   const nameOf = (uid: string) => members.find((m) => m.userId === uid)?.displayName ?? 'thành viên cũ';
 
   const canEdit = project.role !== 'viewer';
@@ -65,6 +76,38 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
           </div>
         )}
       </header>
+
+      <section className="space-y-2 border border-line bg-white p-4">
+        <h3 className="text-xs font-semibold uppercase tracking-wider text-zinc-500">Độ tin cậy & thông tin xuất bản</h3>
+        <div className="grid gap-4 sm:grid-cols-2">
+          <CredibilityCell cred={cred} pub={paper.pub} detailed />
+          <dl className="grid grid-cols-[auto_1fr] gap-x-3 gap-y-0.5 text-xs">
+            <dt className="text-zinc-500">Tạp chí</dt>
+            <dd>{paper.pub.journal ?? '—'}</dd>
+            <dt className="text-zinc-500">ISSN</dt>
+            <dd className="tabular-nums">{paper.pub.issns.length ? paper.pub.issns.map((x) => `${x.slice(0, 4)}-${x.slice(4)}`).join(', ') : '—'}</dd>
+            <dt className="text-zinc-500">DOI</dt>
+            <dd>
+              {paper.pub.doi ? (
+                <a className="underline" href={`https://doi.org/${paper.pub.doi}`} target="_blank" rel="noreferrer">
+                  {paper.pub.doi}
+                </a>
+              ) : (
+                '—'
+              )}
+            </dd>
+            <dt className="text-zinc-500">NXB</dt>
+            <dd>{paper.pub.publisher ?? '—'}</dd>
+            <dt className="text-zinc-500">Năm</dt>
+            <dd>{paper.pub.year ?? '—'}</dd>
+            <dt className="text-zinc-500">Nguồn</dt>
+            <dd className="text-zinc-500">
+              {SOURCE_LABEL[paper.pub.source ?? ''] ?? 'Chưa tra'}
+            </dd>
+          </dl>
+        </div>
+        <PublicationEditor paperId={paper.id} pub={paper.pub} canEdit={canEdit} />
+      </section>
 
       {hasResult ? (
         PAPER_FIELDS.map((f) => (

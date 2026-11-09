@@ -1,7 +1,8 @@
 import type { ReactNode } from 'react';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
-import { getProjectForUser, listMembers, listMilestones } from '@/lib/data/queries';
+import { getCatalogStatus, getProjectForUser, listMembers, listMilestones } from '@/lib/data/queries';
+import { CatalogManager } from '@/components/settings/CatalogManager';
 import { addDays, formatFull, todayISO } from '@/lib/dates';
 import { ROLE_LABEL } from '@/lib/types';
 import { Avatar } from '@/components/ui/badges';
@@ -13,7 +14,7 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
   const user = await requireUser();
   const project = await getProjectForUser(id, user.id);
   if (!project) notFound();
-  const [members, milestones] = await Promise.all([listMembers(id), listMilestones(id)]);
+  const [members, milestones, catalog] = await Promise.all([listMembers(id), listMilestones(id), getCatalogStatus()]);
   const isOwner = project.role === 'owner';
 
   return (
@@ -84,6 +85,16 @@ export default async function SettingsPage({ params }: { params: Promise<{ id: s
           <ProjectInfoForm project={project} />
         </Section>
       )}
+
+      <div className="xl:col-span-2">
+        <Section title="Danh mục tạp chí — dùng để đánh giá độ tin cậy bài đọc (dùng chung mọi dự án)">
+          <CatalogManager status={catalog} canEdit={isOwner} />
+          <p className="mt-3 text-[11px] text-zinc-500">
+            Hạng Q là xếp hạng của <b>tạp chí</b> theo SCImago (dữ liệu Scopus), không phải của từng bài. Danh sách Beall đã ngừng cập nhật từ 2017 và
+            từng gây tranh cãi — chỉ dùng như tín hiệu để kiểm tra thêm, không phải kết luận.
+          </p>
+        </Section>
+      </div>
 
       <Section title="Phân quyền">
         <ul className="space-y-1.5 text-sm text-zinc-700">

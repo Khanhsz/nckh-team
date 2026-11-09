@@ -9,11 +9,34 @@ import { DriveError, downloadPdf, getFolder, listPdfs, parseFolderId } from '@/l
 import { ExtractError, extractPaper } from '@/lib/ai/extract';
 import { isPaperFieldKey } from '@/lib/ai/fields';
 import { str } from '@/lib/site';
+import { normalizeDoi, normalizeIssns, parseYear, resolvePublication, type PublicationMeta } from '@/lib/scholar/publication';
 import type { FormState } from '@/lib/auth/actions';
 
 const MAX_PDF_BYTES = 14 * 1024 * 1024; // giới hạn gửi trực tiếp cho Gemini (sau base64 < 20 MB)
 const refresh = () => revalidatePath('/', 'layout');
 const errText = (e: unknown, fallback: string) => (e instanceof DriveError || e instanceof ExtractError ? e.message : fallback);
+
+/** Ghi thông tin xuất bản vào bài (chỉ ghi đè khi có giá trị mới) */
+async function savePublication(paperId: string, meta: PublicationMeta) {
+  const supabase = await createClient();
+  const patch: {
+    meta_checked_at: string;
+    meta_source: string;
+    doi?: string;
+    journal?: string;
+    issns?: string[];
+    publisher?: string;
+    pub_year?: number;
+    cited_by?: number;
+  } = { meta_checked_at: new Date().toISOString(), meta_source: meta.source };
+  if (meta.doi) patch.doi = meta.doi;
+  if (meta.journal) patch.journal = meta.journal;
+  if (meta.issns.length) patch.issns = meta.issns;
+  if (meta.publisher) patch.publisher = meta.publisher;
+  if (meta.year) patch.pub_year = meta.year;
+  if (meta.citedBy !== null) patch.cited_by = meta.citedBy;
+  return supabase.from('papers').update(patch).eq('id', paperId).select('id');
+}
 
 async function editableProject(projectId: string) {
   const user = await requireUser();
@@ -161,6 +184,17 @@ export async function extractPaperAction(paperId: string): Promise<{ error?: str
       })
       .eq('id', paperId);
     if (saveErr) throw saveErr;
+    // Thông tin xuất bản: Gemini đọc từ PDF + Crossref bổ sung (lỗi ở bước này không làm hỏng kết quả trích xuất)
+    try {
+      const meta = await resolvePublication({
+        ...result.publication,
+        issns: result.publication.issn,
+        bibliographic: result.fields.paperInformation
+      });
+      await savePublication(paperId, meta);
+    } catch (metaErr) {
+      console.error('publication', metaErr);
+    }
     refresh();
     return {};
   } catch (e) {
@@ -205,6 +239,56 @@ export async function setFieldVerifiedAction(paperId: string, field: string, ver
   else delete next[field];
   const supabase = await createClient();
   const { data, error } = await supabase.from('papers').update({ verified: next }).eq('id', paperId).select('id');
+  if (error) return { error: dbErrorMessage(error) };
+  if (!data?.length) return { error: 'Bạn không có quyền sửa bài này.' };
+  refresh();
+  return {};
+}
+
+/* ---------------- Độ tin cậy: tra thông tin xuất bản (không tốn lượt Gemini) ---------------- */
+
+export async function refreshPaperMetaAction(paperId: string): Promise<{ error?: string; stop?: boolean }> {
+  const paper = await getPaper(paperId);
+  if (!paper) return { error: 'Không tìm thấy bài.' };
+  const { project, error } = await editableProject(paper.projectId);
+  if (!project) return { error: error ?? 'Không có quyền.', stop: true };
+  const info = paper.fields.paperInformation;
+  const meta = await resolvePublication({
+    doi: paper.pub.doi,
+    journal: paper.pub.journal,
+    issns: paper.pub.issns,
+    publisher: paper.pub.publisher,
+    year: paper.pub.year,
+    title: info ? null : paper.fileName.replace(/\.pdf$/i, '').replace(/[_]+/g, ' '),
+    bibliographic: info ?? null
+  });
+  const { data, error: dbErr } = await savePublication(paperId, meta);
+  if (dbErr) return { error: dbErrorMessage(dbErr) };
+  if (!data?.length) return { error: 'Bạn không có quyền sửa bài này.', stop: true };
+  refresh();
+  return {};
+}
+
+/** Sửa tay thông tin xuất bản (khi AI/Crossref nhận sai) */
+export async function updatePublicationAction(
+  paperId: string,
+  input: { doi: string; journal: string; issns: string; publisher: string; year: string }
+): Promise<{ error?: string }> {
+  await requireUser();
+  const supabase = await createClient();
+  const { data, error } = await supabase
+    .from('papers')
+    .update({
+      doi: normalizeDoi(input.doi),
+      journal: input.journal.trim().slice(0, 300) || null,
+      issns: normalizeIssns(input.issns),
+      publisher: input.publisher.trim().slice(0, 300) || null,
+      pub_year: parseYear(input.year),
+      meta_source: 'manual',
+      meta_checked_at: new Date().toISOString()
+    })
+    .eq('id', paperId)
+    .select('id');
   if (error) return { error: dbErrorMessage(error) };
   if (!data?.length) return { error: 'Bạn không có quyền sửa bài này.' };
   refresh();

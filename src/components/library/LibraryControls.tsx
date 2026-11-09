@@ -3,7 +3,7 @@
 import { useActionState, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import type { FormState } from '@/lib/auth/actions';
-import { connectDriveFolderAction, extractPaperAction, syncDriveAction } from '@/app/(app)/projects/[id]/library/actions';
+import { connectDriveFolderAction, extractPaperAction, refreshPaperMetaAction, syncDriveAction } from '@/app/(app)/projects/[id]/library/actions';
 import { FormMessage, SubmitButton } from '@/components/ui/FormBits';
 
 export function ConnectFolderForm({ projectId }: { projectId: string }) {
@@ -110,7 +110,44 @@ export function ExtractQueue({ paperIds, label }: { paperIds: string[]; label: s
   );
 }
 
-/** Làm mới dữ liệu định kỳ khi tab đang mở (bài mới do bộ đồng bộ 5 phút đưa vào sẽ hiện ra). */
+/** Tra thông tin xuất bản (Crossref, miễn phí) cho các bài chưa có — không tốn lượt Gemini. */
+export function MetaQueue({ paperIds }: { paperIds: string[] }) {
+  const router = useRouter();
+  const [running, setRunning] = useState(false);
+  const [done, setDone] = useState(0);
+  const stopRef = useRef(false);
+  if (paperIds.length === 0 && !running) return null;
+
+  const run = async () => {
+    setRunning(true);
+    setDone(0);
+    stopRef.current = false;
+    for (let i = 0; i < paperIds.length; i++) {
+      if (stopRef.current) break;
+      const r = await refreshPaperMetaAction(paperIds[i]);
+      setDone(i + 1);
+      if ((i + 1) % 5 === 0) router.refresh();
+      if (r.stop) break;
+    }
+    router.refresh();
+    setRunning(false);
+  };
+
+  return !running ? (
+    <button onClick={run} className="border border-zinc-900 px-2.5 py-1 text-xs font-medium hover:bg-paper-2" title="Tra DOI, ISSN, tạp chí, số trích dẫn qua Crossref (miễn phí)">
+      ★ Tra độ tin cậy ({paperIds.length})
+    </button>
+  ) : (
+    <span className="flex items-center gap-2 text-xs">
+      Đang tra {done}/{paperIds.length}…
+      <button onClick={() => (stopRef.current = true)} className="text-zinc-500 underline">
+        Dừng
+      </button>
+    </span>
+  );
+}
+
+/** Làm mới dữ liệu định kỳ khi tab đang mở (bài mới do bộ đồng bộ tự động đưa vào sẽ hiện ra). */
 export function AutoRefresh({ seconds }: { seconds: number }) {
   const router = useRouter();
   useEffect(() => {

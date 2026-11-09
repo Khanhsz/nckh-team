@@ -1,13 +1,14 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { requireUser } from '@/lib/auth/session';
-import { getProjectForUser, listPapers } from '@/lib/data/queries';
+import { getProjectForUser, listPaperCredibility, listPapers } from '@/lib/data/queries';
 import { serviceAccountEmail } from '@/lib/google/drive';
 import { geminiConfigured, geminiModel } from '@/lib/ai/extract';
 import { PAPER_FIELDS, VIEW_PRESETS } from '@/lib/ai/fields';
 import { PAPER_STATUS_LABEL, type PaperStatus } from '@/lib/types';
 import { AcademicText } from '@/components/library/AcademicText';
-import { AutoRefresh, ConnectFolderForm, ExtractQueue, SyncButton } from '@/components/library/LibraryControls';
+import { AutoRefresh, ConnectFolderForm, ExtractQueue, MetaQueue, SyncButton } from '@/components/library/LibraryControls';
+import { CredibilityCell, flagLevel } from '@/components/library/Credibility';
 import { LibraryFrame } from '@/components/library/LibraryFrame';
 import { disconnectDriveFolderAction } from './actions';
 
@@ -33,14 +34,14 @@ export default async function LibraryPage({
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ view?: string; q?: string; d?: string }>;
+  searchParams: Promise<{ view?: string; q?: string; d?: string; rel?: string }>;
 }) {
   const { id } = await params;
-  const { view, q, d } = await searchParams;
+  const { view, q, d, rel } = await searchParams;
   const user = await requireUser();
   const project = await getProjectForUser(id, user.id);
   if (!project) notFound();
-  const papers = await listPapers(id);
+  const [papers, credMap] = await Promise.all([listPapers(id), listPaperCredibility(id)]);
 
   const botEmail = serviceAccountEmail();
   const aiReady = geminiConfigured();
@@ -50,14 +51,39 @@ export default async function LibraryPage({
   const columns = PAPER_FIELDS.filter((f) => (preset.keys as readonly string[]).includes(f.key));
 
   const query = (q ?? '').trim().toLowerCase();
-  const visible = query
-    ? papers.filter((p) => p.fileName.toLowerCase().includes(query) || Object.values(p.fields).some((v) => v.toLowerCase().includes(query)))
-    : papers;
+  const RELS = [
+    { id: '', label: 'Tất cả' },
+    { id: 'q12', label: 'Q1–Q2' },
+    { id: 'warn', label: '⚠ Có cảnh báo' },
+    { id: 'none', label: 'Không xếp hạng' }
+  ] as const;
+  const relFilter = RELS.find((r) => r.id === rel)?.id ?? '';
+  const relMatch = (pid: string) => {
+    const c = credMap.get(pid);
+    if (relFilter === 'q12') return c?.quartile === 'Q1' || c?.quartile === 'Q2';
+    if (relFilter === 'warn') return Boolean(c?.flags.length);
+    if (relFilter === 'none') return !c?.quartile;
+    return true;
+  };
+  const relCount = (id: string) =>
+    papers.filter((p) => {
+      const c = credMap.get(p.id);
+      return id === 'q12' ? c?.quartile === 'Q1' || c?.quartile === 'Q2' : id === 'warn' ? Boolean(c?.flags.length) : id === 'none' ? !c?.quartile : true;
+    }).length;
+  const visible = papers.filter(
+    (p) =>
+      relMatch(p.id) &&
+      (!query ||
+        p.fileName.toLowerCase().includes(query) ||
+        (p.pub.journal ?? '').toLowerCase().includes(query) ||
+        Object.values(p.fields).some((v) => v.toLowerCase().includes(query)))
+  );
+  const needMeta = papers.filter((p) => !p.pub.checkedAt).map((p) => p.id);
   const toExtract = papers.filter((p) => p.status === 'pending' || p.status === 'stale' || p.status === 'error').map((p) => p.id);
   const done = papers.filter((p) => p.status === 'completed').length;
   const href = (patch: Record<string, string | undefined>) => {
     const sp = new URLSearchParams();
-    const merged = { view: preset.id, d: density.id, q: q || undefined, ...patch };
+    const merged = { view: preset.id, d: density.id, q: q || undefined, rel: relFilter || undefined, ...patch };
     for (const [k, v] of Object.entries(merged)) if (v) sp.set(k, v);
     return `?${sp.toString()}`;
   };
@@ -109,9 +135,22 @@ export default async function LibraryPage({
           </Link>
         ))}
       </div>
+      <div className="flex border border-line bg-white text-xs" title="Lọc theo độ tin cậy của tạp chí">
+        {RELS.map((r) => (
+          <Link
+            key={r.id}
+            href={href({ rel: r.id || undefined })}
+            className={`px-2.5 py-1.5 ${relFilter === r.id ? 'bg-zinc-900 text-white' : r.id === 'warn' && relCount('warn') > 0 ? 'text-amber-800 hover:bg-amber-50' : 'text-zinc-600 hover:bg-paper-2'}`}
+          >
+            {r.label}
+            {r.id && <span className="ml-1 tabular-nums opacity-70">{relCount(r.id)}</span>}
+          </Link>
+        ))}
+      </div>
       <form className="min-w-48 flex-1">
         <input type="hidden" name="view" value={preset.id} />
         <input type="hidden" name="d" value={density.id} />
+        {relFilter && <input type="hidden" name="rel" value={relFilter} />}
         <input
           name="q"
           defaultValue={q}
@@ -135,12 +174,13 @@ export default async function LibraryPage({
           </a>
           {project.driveSyncedAt && (
             <span className="text-zinc-500">
-              · đồng bộ {new Date(project.driveSyncedAt).toLocaleTimeString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit' })} (tự động 5 phút)
+              · đồng bộ {new Date(project.driveSyncedAt).toLocaleString('vi-VN', { timeZone: 'Asia/Ho_Chi_Minh', hour: '2-digit', minute: '2-digit', day: '2-digit', month: '2-digit' })} (tự động 7h & 19h — bấm Đồng bộ để cập nhật ngay)
             </span>
           )}
         </span>
         {canEdit && <SyncButton projectId={id} />}
         {canEdit && aiReady && <ExtractQueue paperIds={toExtract} label="Trích xuất bài chưa xử lý" />}
+        {canEdit && <MetaQueue paperIds={needMeta} />}
         {!aiReady && <span className="text-amber-700">Chưa cấu hình GEMINI_API_KEY — chưa trích xuất được.</span>}
         <span className="ml-auto text-zinc-500">
           <b className="text-zinc-800">{done}</b>/{papers.length} đã trích xuất · {geminiModel()}
@@ -162,6 +202,9 @@ export default async function LibraryPage({
               <th className="sticky left-0 z-20 w-64 min-w-64 border-b border-r border-line bg-paper px-3 py-2 font-semibold">
                 Bài đọc ({visible.length})
               </th>
+              <th className="w-52 min-w-52 border-b border-r border-line px-3 py-2 font-semibold" title="Hạng Q (SCImago), SJR, số trích dẫn, cảnh báo tạp chí săn mồi">
+                Độ tin cậy
+              </th>
               {columns.map((c) => (
                 <th key={c.key} className="w-80 min-w-80 border-b border-line px-3 py-2 font-semibold">
                   {c.short}
@@ -172,7 +215,15 @@ export default async function LibraryPage({
           <tbody>
             {visible.map((p) => (
               <tr key={p.id} className="align-top hover:bg-paper/50">
-                <td className="sticky left-0 z-[5] border-b border-r border-line bg-white px-3 py-2">
+                <td
+                  className={`sticky left-0 z-[5] border-b border-r border-line bg-white px-3 py-2 ${
+                    flagLevel(credMap.get(p.id)) === 'danger'
+                      ? 'shadow-[inset_4px_0_0_#e11d48]'
+                      : flagLevel(credMap.get(p.id)) === 'warn'
+                        ? 'shadow-[inset_4px_0_0_#f59e0b]'
+                        : ''
+                  }`}
+                >
                   <Link href={`/projects/${id}/library/${p.id}`} className="line-clamp-3 font-medium underline-offset-2 hover:underline" title={p.fileName}>
                     {p.fileName}
                   </Link>
@@ -190,6 +241,9 @@ export default async function LibraryPage({
                     )}
                   </div>
                   {p.status === 'error' && p.error && <p className="mt-1 line-clamp-2 text-[11px] text-rose-700" title={p.error}>{p.error}</p>}
+                </td>
+                <td className="border-b border-r border-line px-3 py-2">
+                  <CredibilityCell cred={credMap.get(p.id)} pub={p.pub} />
                 </td>
                 {columns.map((c) => (
                   <td key={c.key} className="border-b border-line px-3 py-2 text-zinc-800">
@@ -210,8 +264,8 @@ export default async function LibraryPage({
             ))}
             {visible.length === 0 && (
               <tr>
-                <td colSpan={columns.length + 1} className="px-3 py-10 text-center text-sm text-zinc-500">
-                  {papers.length === 0 ? 'Chưa có bài đọc — bấm “Đồng bộ ngay” hoặc chờ lần đồng bộ tự động.' : 'Không có bài nào khớp từ khoá.'}
+                <td colSpan={columns.length + 2} className="px-3 py-10 text-center text-sm text-zinc-500">
+                  {papers.length === 0 ? 'Chưa có bài đọc — bấm “Đồng bộ ngay” hoặc chờ lần đồng bộ tự động.' : 'Không có bài nào khớp bộ lọc.'}
                 </td>
               </tr>
             )}
