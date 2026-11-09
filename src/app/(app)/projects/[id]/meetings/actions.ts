@@ -174,7 +174,7 @@ export async function saveMeetingAction(projectId: string, meetingId: string | n
       const stay = [...now.entries()].filter(([k]) => old.has(k)).map(([, v]) => v);
       const parts = await Promise.all([
         notify(projectId, row, added, 'new', byName, project.name),
-        changed ? notify(projectId, row, stay, 'update', byName, project.name) : Promise.resolve({ sent: 0, failed: 0, skipped: false }),
+        changed ? notify(projectId, row, stay, 'update', byName, project.name) : Promise.resolve<MeetingResult['mail']>({ sent: 0, failed: 0, skipped: false }),
         notify(projectId, { ...row, sequence: row.sequence + 1 }, removed, 'cancel', byName, project.name)
       ]);
       mail = parts.reduce<NonNullable<MeetingResult['mail']>>(
