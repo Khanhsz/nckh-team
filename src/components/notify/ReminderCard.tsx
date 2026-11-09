@@ -2,7 +2,7 @@
 
 import { Icon } from '@/components/ui/Icon';
 import { useState, useTransition } from 'react';
-import { rotateCalendarTokenAction, setDigestAction } from '@/lib/notify/actions';
+import { rotateCalendarTokenAction, sendTestMailAction, setDigestAction } from '@/lib/notify/actions';
 
 export function ReminderCard({ calendarUrl, digest, smtpReady, email }: { calendarUrl: string | null; digest: boolean; smtpReady: boolean; email: string }) {
   const [url, setUrl] = useState(calendarUrl);
@@ -80,6 +80,25 @@ export function ReminderCard({ calendarUrl, digest, smtpReady, email }: { calend
             <input type="checkbox" checked={on} disabled={pending} onChange={(e) => toggle(e.target.checked)} />
             Nhận email tóm tắt
           </label>
+        ) : null}
+        {smtpReady ? (
+          <button
+            onClick={() =>
+              start(async () => {
+                setMsg('Đang gửi email thử…');
+                try {
+                  const r = await sendTestMailAction();
+                  setMsg(r.ok ?? r.error ?? null);
+                } catch {
+                  setMsg('Trang đang mở là bản cũ. Tải lại trang rồi thử lại.');
+                }
+              })
+            }
+            disabled={pending}
+            className="border border-ink-3/50 px-3 py-1 text-xs text-primary hover:bg-paper-2 disabled:opacity-50"
+          >
+            Gửi email thử tới tôi
+          </button>
         ) : (
           <p className="border border-amber-300 bg-amber-50 p-2 text-[11px] text-amber-900">
             Chưa bật: quản trị viên cần cấu hình tài khoản gửi mail (SMTP_USER, SMTP_PASS) trên Vercel. Trong lúc chờ, dùng link lịch bên trái.

@@ -7,7 +7,7 @@ import { dbErrorMessage } from '@/lib/errors';
 import { isValidISODate } from '@/lib/dates';
 import { getSiteUrl } from '@/lib/site';
 import { getProjectForUser, listMembers } from '@/lib/data/queries';
-import { sendMails, smtpConfigured } from '@/lib/mail/smtp';
+import { explainSmtpError, sendMails, smtpConfigured } from '@/lib/mail/smtp';
 import { meetingMail } from '@/lib/mail/templates';
 import { googleCalendarLink, meetingIcs } from '@/lib/calendar/ics';
 import type { Database } from '@/lib/supabase/database.types';
@@ -32,7 +32,7 @@ export interface MeetingResult {
   error?: string;
   id?: string;
   /** Kết quả gửi email: sent = số thư đã gửi; skipped = chưa cấu hình SMTP */
-  mail?: { sent: number; failed: number; skipped: boolean };
+  mail?: { sent: number; failed: number; skipped: boolean; error?: string };
 }
 
 const EMAIL = /^[^\s@<>(),;:"]+@[^\s@<>(),;:"]+\.[a-z]{2,}$/i;
@@ -93,7 +93,7 @@ async function notify(
       })
     )
   );
-  return { sent: res.sent, failed: recipients.length - res.sent, skipped: false };
+  return { sent: res.sent, failed: recipients.length - res.sent, skipped: false, error: res.errors[0] ? explainSmtpError(res.errors[0]) : undefined };
 }
 
 function recipientsOf(row: Pick<Row, 'attendee_ids' | 'guest_emails'>, members: Awaited<ReturnType<typeof listMembers>>) {
@@ -177,7 +177,10 @@ export async function saveMeetingAction(projectId: string, meetingId: string | n
         changed ? notify(projectId, row, stay, 'update', byName, project.name) : Promise.resolve({ sent: 0, failed: 0, skipped: false }),
         notify(projectId, { ...row, sequence: row.sequence + 1 }, removed, 'cancel', byName, project.name)
       ]);
-      mail = parts.reduce((a, b) => ({ sent: a!.sent + b!.sent, failed: a!.failed + b!.failed, skipped: a!.skipped || b!.skipped }), { sent: 0, failed: 0, skipped: false });
+      mail = parts.reduce<NonNullable<MeetingResult['mail']>>(
+        (a, b) => ({ sent: a.sent + (b?.sent ?? 0), failed: a.failed + (b?.failed ?? 0), skipped: a.skipped || !!b?.skipped, error: a.error ?? b?.error }),
+        { sent: 0, failed: 0, skipped: false }
+      );
     }
   }
   return { id: row.id, mail };

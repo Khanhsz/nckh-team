@@ -9,6 +9,7 @@ import { deleteMeetingAction, saveMeetingAction, type MeetingResult } from '@/ap
 const field = 'w-full border border-line bg-white px-2.5 py-1.5 text-sm outline-none focus:border-primary disabled:bg-paper-2 disabled:text-ink-3';
 const label = 'mb-1 block text-xs font-medium text-ink-2';
 const TZ = 'Asia/Ho_Chi_Minh';
+const STALE = 'Không lưu được: trang đang mở là bản cũ của ứng dụng (vừa cập nhật). Tải lại trang (Ctrl+Shift+R) rồi thử lại.';
 
 /** ISO → { date: YYYY-MM-DD, time: HH:MM } theo giờ Việt Nam */
 export function vnParts(iso: string) {
@@ -104,20 +105,31 @@ export function MeetingDialog({
     if (!r.mail) return '';
     if (r.mail.skipped) return ' Chưa gửi email vì chưa cấu hình SMTP.';
     if (r.mail.sent === 0 && r.mail.failed === 0) return '';
-    return r.mail.failed ? ` Đã gửi ${r.mail.sent} email, ${r.mail.failed} email không gửi được.` : ` Đã gửi ${r.mail.sent} email mời kèm lịch.`;
+    return r.mail.failed
+      ? ` Đã gửi ${r.mail.sent} email, ${r.mail.failed} email không gửi được${r.mail.error ? `: ${r.mail.error}` : '.'}`
+      : ` Đã gửi ${r.mail.sent} email mời kèm lịch.`;
   };
 
   const save = () =>
     start_(async () => {
       setError(null);
       const pending = guestDraft.trim() ? [...guests, ...guestDraft.split(/[\s,;]+/).filter(Boolean)] : guests;
-      const r = await saveMeetingAction(
-        projectId,
-        meeting?.id ?? null,
-        { title, date, start, end, location, meetUrl, notes, attendeeIds: attendees, guestEmails: pending },
-        sendEmail
-      );
+      let r: MeetingResult;
+      try {
+        r = await saveMeetingAction(
+          projectId,
+          meeting?.id ?? null,
+          { title, date, start, end, location, meetUrl, notes, attendeeIds: attendees, guestEmails: pending },
+          sendEmail
+        );
+      } catch {
+        return setError(STALE);
+      }
       if (r.error) return setError(r.error);
+      if (r.mail?.failed && r.mail.sent === 0) {
+        // Đã lưu cuộc họp nhưng không gửi được thư nào: giữ hộp thoại để người dùng thấy lỗi
+        return setError(`Đã lưu cuộc họp nhưng chưa gửi được email. ${r.mail.error ?? ''}`.trim());
+      }
       onDone(`${meeting ? 'Đã lưu' : 'Đã đặt'} cuộc họp “${title.trim()}”.${mailNote(r)}`);
     });
 
@@ -125,7 +137,12 @@ export function MeetingDialog({
     if (!meeting) return;
     if (!window.confirm(`Huỷ cuộc họp “${meeting.title}”?${sendEmail && smtpReady ? ' Người tham dự sẽ nhận email báo huỷ.' : ''}`)) return;
     start_(async () => {
-      const r = await deleteMeetingAction(projectId, meeting.id, sendEmail);
+      let r: MeetingResult;
+      try {
+        r = await deleteMeetingAction(projectId, meeting.id, sendEmail);
+      } catch {
+        return setError(STALE);
+      }
       if (r.error) return setError(r.error);
       onDone(`Đã huỷ cuộc họp “${meeting.title}”.${mailNote(r)}`);
     });

@@ -8,6 +8,17 @@ import { connect, type TLSSocket } from 'node:tls';
  *   SMTP_HOST  (mặc định smtp.gmail.com)   SMTP_PORT (mặc định 465)   SMTP_FROM (tuỳ chọn, tên hiển thị)
  */
 
+/** Diễn giải lỗi SMTP thường gặp (Gmail) thành câu dễ hiểu */
+export function explainSmtpError(raw: string): string {
+  if (/\b535\b|BadCredentials|Username and Password not accepted/i.test(raw))
+    return 'Gmail từ chối đăng nhập: App Password sai (hoặc còn dấu cách), hoặc SMTP_USER không phải đúng Gmail đã tạo App Password.';
+  if (/\b534\b|Application-specific password required/i.test(raw)) return 'Gmail yêu cầu App Password: SMTP_PASS đang là mật khẩu thường, hãy tạo App Password.';
+  if (/timeout|ETIMEDOUT|ECONNREFUSED|ENOTFOUND/i.test(raw)) return 'Không kết nối được máy chủ mail (kiểm tra SMTP_HOST/SMTP_PORT).';
+  if (/\b550\b|\b553\b/.test(raw)) return 'Địa chỉ người nhận bị từ chối.';
+  if (/\b421\b|\b454\b|limit/i.test(raw)) return 'Gmail tạm chặn do gửi quá nhiều, thử lại sau.';
+  return raw.slice(0, 200);
+}
+
 export function smtpConfigured(): boolean {
   return Boolean(process.env.SMTP_USER && process.env.SMTP_PASS);
 }
@@ -54,8 +65,8 @@ export interface Mail {
 
 /** Gửi nhiều email trong một phiên SMTP. Trả về số email gửi được và lỗi (nếu có). */
 export async function sendMails(mails: Mail[]): Promise<{ sent: number; errors: string[] }> {
-  const user = process.env.SMTP_USER!;
-  const pass = process.env.SMTP_PASS!;
+  const user = process.env.SMTP_USER!.trim();
+  const pass = process.env.SMTP_PASS!.replace(/\s+/g, '');
   const host = process.env.SMTP_HOST || 'smtp.gmail.com';
   const port = Number(process.env.SMTP_PORT || 465);
   const fromName = process.env.SMTP_FROM || 'NCKH Team';
@@ -139,6 +150,7 @@ export async function sendMails(mails: Mail[]): Promise<{ sent: number; errors: 
   } catch (e) {
     errors.push(e instanceof Error ? e.message : 'SMTP lỗi');
   } finally {
+    if (errors.length) console.error('[smtp]', errors.join(' | '));
     sock.end();
   }
   return { sent, errors };
