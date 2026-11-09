@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent, type PointerEvent as RPE } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, useTransition, type KeyboardEvent, type PointerEvent as RPE } from 'react';
 import { useRouter } from 'next/navigation';
 import type { Member, Milestone, Project, ProjectRole, Task } from '@/lib/types';
 import { TASK_STATUS_LABEL } from '@/lib/types';
@@ -19,7 +19,11 @@ import { TaskDialog, type DialogState } from './TaskDialog';
  */
 
 export type TimelineZoom = '2w' | 'month' | 'quarter';
-const DAY_W: Record<TimelineZoom, number> = { '2w': 64, month: 36, quarter: 14 };
+export const DAY_W: Record<TimelineZoom, number> = { '2w': 64, month: 36, quarter: 14 };
+const MIN_DW = 6;
+const MAX_DW = 120;
+const DW_KEY = 'nckh-timeline-day-width';
+const clampDw = (v: number) => Math.min(MAX_DW, Math.max(MIN_DW, Math.round(v * 10) / 10));
 const LEFT_W = 200;
 const SCALE_H = 46;
 const MS_H = 30;
@@ -66,13 +70,13 @@ interface Props {
   milestones: Milestone[];
   tasks: Task[];
   members: Member[];
-  zoom: TimelineZoom;
+  initialZoom?: TimelineZoom;
   role: ProjectRole;
   userId: string;
   today: string;
 }
 
-export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp, members, zoom, role, userId, today }: Props) {
+export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp, members, initialZoom = 'month', role, userId, today }: Props) {
   const router = useRouter();
   const [tasks, setTasks] = useState(tasksProp);
   const [milestones, setMilestones] = useState(msProp);
@@ -94,7 +98,90 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   }, [flash]);
 
   const isOwner = role === 'owner';
-  const dw = DAY_W[zoom];
+
+  // ---- Độ rộng ngày co giãn tự do (px/ngày) ----
+  const [dw, setDw] = useState<number>(DAY_W[initialZoom]);
+  const dwRef = useRef(dw);
+  dwRef.current = dw;
+  const pendingScroll = useRef<number | null>(null);
+  const stretchRef = useRef<{ x0: number; d0: number; dw0: number; left0: number } | null>(null);
+  const [stretching, setStretching] = useState(false);
+
+  useEffect(() => {
+    try {
+      const saved = Number(localStorage.getItem(DW_KEY));
+      if (saved >= MIN_DW && saved <= MAX_DW) setDw(saved);
+    } catch {
+      /* trình duyệt chặn localStorage */
+    }
+  }, []);
+  useEffect(() => {
+    try {
+      localStorage.setItem(DW_KEY, String(dw));
+    } catch {
+      /* bỏ qua */
+    }
+  }, [dw]);
+  useLayoutEffect(() => {
+    if (pendingScroll.current !== null && scrollRef.current) {
+      scrollRef.current.scrollLeft = pendingScroll.current;
+      pendingScroll.current = null;
+    }
+  }, [dw]);
+
+  /** Đổi độ rộng ngày, giữ cố định ngày nằm dưới điểm neo (con trỏ, hoặc giữa khung nhìn). */
+  const zoomTo = (next: number, anchorClientX?: number) => {
+    const el = scrollRef.current;
+    const nd = clampDw(next);
+    if (!el) return setDw(nd);
+    const rect = el.getBoundingClientRect();
+    const cx = anchorClientX !== undefined ? Math.max(0, anchorClientX - rect.left - LEFT_W) : (el.clientWidth - LEFT_W) / 2;
+    const dayAt = (el.scrollLeft + cx) / dwRef.current;
+    pendingScroll.current = Math.max(0, dayAt * nd - cx);
+    setDw(nd);
+  };
+  const zoomToRef = useRef(zoomTo);
+  zoomToRef.current = zoomTo;
+
+  // Ctrl/⌘ + cuộn chuột để co giãn (cần listener non-passive để chặn zoom cả trang)
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    const onWheel = (e: WheelEvent) => {
+      if (!e.ctrlKey && !e.metaKey) return;
+      e.preventDefault();
+      zoomToRef.current(dwRef.current * (e.deltaY < 0 ? 1.12 : 1 / 1.12), e.clientX);
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, []);
+
+  // Kéo trên thanh ngày để giãn/co: điểm bắt đầu kéo bám theo con trỏ, mép trái khung nhìn đứng yên
+  const onScaleDown = (e: RPE<HTMLDivElement>) => {
+    if (e.button !== 0 || !scrollRef.current) return;
+    e.preventDefault();
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const rect = scrollRef.current.getBoundingClientRect();
+    stretchRef.current = {
+      x0: e.clientX,
+      d0: Math.max(24, e.clientX - rect.left - LEFT_W),
+      dw0: dwRef.current,
+      left0: scrollRef.current.scrollLeft
+    };
+    setStretching(true);
+  };
+  const onScaleMove = (e: RPE<HTMLDivElement>) => {
+    const st = stretchRef.current;
+    if (!st) return;
+    const nd = clampDw((st.dw0 * (st.d0 + (e.clientX - st.x0))) / st.d0);
+    if (nd === dwRef.current) return;
+    pendingScroll.current = (st.left0 / st.dw0) * nd;
+    setDw(nd);
+  };
+  const onScaleUp = () => {
+    stretchRef.current = null;
+    setStretching(false);
+  };
 
   // ---- Khoảng thời gian ----
   const start = addDays(minDate(project.startDate, today, ...tasksProp.map((t) => t.startDate)), -14);
@@ -104,11 +191,11 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   const x = (iso: string) => diffDays(start, iso) * dw;
   const dayIso = (d: number) => addDays(start, d);
 
-  // Cuộn tới hôm nay khi mở / đổi mức zoom
+  // Cuộn tới hôm nay khi mở trang
   useEffect(() => {
     if (scrollRef.current) scrollRef.current.scrollLeft = Math.max(0, x(today) - 4 * dw);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom]);
+  }, []);
 
   // ---- Làn: thành viên có thể nhận việc + "Chưa giao" ----
   const lanes: Lane[] = useMemo(() => {
@@ -265,7 +352,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   const onLaneUp = (lane: Lane) => {
     if (drag?.kind !== 'create' || drag.laneKey !== lane.key) return;
     const a = Math.min(drag.a, drag.b);
-    const b = a === Math.max(drag.a, drag.b) ? Math.min(a + (zoom === 'quarter' ? 6 : 2), totalDays - 1) : Math.max(drag.a, drag.b);
+    const b = a === Math.max(drag.a, drag.b) ? Math.min(a + (dw < 18 ? 6 : 2), totalDays - 1) : Math.max(drag.a, drag.b);
     setDrag(null);
     setQuickTitle('');
     setQuick({ laneKey: lane.key, a, b });
@@ -427,6 +514,38 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
 
   return (
     <div className="space-y-2">
+      <div className="flex flex-wrap items-center gap-2 text-xs">
+        <span className="text-zinc-500">Độ rộng ngày</span>
+        <div className="flex border border-line bg-white">
+          {(Object.keys(DAY_W) as TimelineZoom[]).map((z) => (
+            <button
+              key={z}
+              onClick={() => zoomTo(DAY_W[z])}
+              className={`px-2.5 py-1 ${Math.abs(dw - DAY_W[z]) < 0.5 ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-paper-2'}`}
+            >
+              {z === '2w' ? '2 tuần' : z === 'month' ? 'Tháng' : 'Quý'}
+            </button>
+          ))}
+        </div>
+        <button onClick={() => zoomTo(dw / 1.25)} className="border border-line bg-white px-2 py-0.5 text-sm leading-5 hover:bg-paper-2" aria-label="Thu hẹp ngày">
+          −
+        </button>
+        <input
+          type="range"
+          min={MIN_DW}
+          max={MAX_DW}
+          step={1}
+          value={Math.round(dw)}
+          onChange={(e) => zoomTo(Number(e.target.value))}
+          aria-label="Độ rộng mỗi ngày"
+          className="w-40 accent-zinc-900"
+        />
+        <button onClick={() => zoomTo(dw * 1.25)} className="border border-line bg-white px-2 py-0.5 text-sm leading-5 hover:bg-paper-2" aria-label="Giãn rộng ngày">
+          +
+        </button>
+        <span className="w-16 font-mono text-zinc-600">{Math.round(dw)} px/ngày</span>
+        <span className="text-zinc-400">· kéo trên thanh ngày hoặc Ctrl + cuộn chuột để co giãn</span>
+      </div>
       <div className="flex min-h-7 flex-wrap items-center gap-3 text-xs">
         <span className="text-zinc-500">
           {isOwner
@@ -435,6 +554,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
               ? 'Quét trên làn của bạn để tự tạo việc · kéo việc của bạn để dời / đổi độ dài · bấm ô để xem chi tiết'
               : 'Bấm ô để xem chi tiết công việc'}
         </span>
+        {stretching && <span className="bg-zinc-900 px-2 py-0.5 font-mono text-white">{Math.round(dw)} px/ngày</span>}
         {dragLabel && <span className="bg-zinc-900 px-2 py-0.5 font-mono text-white">{dragLabel}</span>}
         {!dragLabel && saving && <span className="text-zinc-500">Đang lưu…</span>}
         {!dragLabel && !saving && flash && (
@@ -457,7 +577,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
                   {m.width > 60 ? m.label : ''}
                 </div>
               ))}
-              {zoom === 'quarter'
+              {dw < 18
                 ? days
                     .filter((d) => d.wd === 1)
                     .map((d) => (
@@ -473,9 +593,19 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
                       }`}
                       style={{ left: d.left, width: dw }}
                     >
-                      {zoom === '2w' ? `${WD[d.wd]} ${d.iso.slice(8)}` : d.iso.slice(8)}
+                      {dw >= 48 ? `${WD[d.wd]} ${d.iso.slice(8)}` : d.iso.slice(8)}
                     </div>
                   ))}
+              {/* Vùng kéo để co giãn độ rộng ngày */}
+              <div
+                className={`absolute left-0 top-0 z-10 touch-none ${stretching ? 'cursor-grabbing' : 'cursor-col-resize'}`}
+                style={{ width, height: SCALE_H }}
+                title="Kéo sang phải để giãn ngày, sang trái để thu hẹp (hoặc Ctrl + cuộn chuột)"
+                onPointerDown={onScaleDown}
+                onPointerMove={onScaleMove}
+                onPointerUp={onScaleUp}
+                onPointerCancel={onScaleUp}
+              />
               {/* Dải mốc */}
               <div className="absolute left-0 border-t border-line bg-paper/70" style={{ top: SCALE_H, height: MS_H, width }}>
                 {viewMilestones.map((m) => (
@@ -504,7 +634,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
               {days.map((d) =>
                 d.wd === 0 || d.wd === 6 ? (
                   <div key={d.iso} className="absolute top-0 bottom-0 bg-paper-2" style={{ left: d.left, width: dw }} />
-                ) : zoom !== 'quarter' ? (
+                ) : dw >= 18 ? (
                   <div key={d.iso} className="absolute top-0 bottom-0 border-l border-line/40" style={{ left: d.left }} />
                 ) : null
               )}

@@ -4,25 +4,19 @@ import { requireUser } from '@/lib/auth/session';
 import { getProjectForUser, listMembers, listMilestones, listTasks } from '@/lib/data/queries';
 import { todayISO } from '@/lib/dates';
 import { TASK_STATUS_LABEL, TASK_STATUSES } from '@/lib/types';
-import { TimelineCalendar, type TimelineZoom } from '@/components/timeline/TimelineCalendar';
+import { TimelineCalendar } from '@/components/timeline/TimelineCalendar';
 import { STATUS_STYLE } from '@/components/ui/badges';
 
-const ZOOMS: { id: TimelineZoom; label: string }[] = [
-  { id: '2w', label: '2 tuần' },
-  { id: 'month', label: 'Tháng' },
-  { id: 'quarter', label: 'Quý' }
-];
 
 export default async function GanttPage({
   params,
   searchParams
 }: {
   params: Promise<{ id: string }>;
-  searchParams: Promise<{ zoom?: string; created?: string; joined?: string }>;
+  searchParams: Promise<{ created?: string; joined?: string }>;
 }) {
   const { id } = await params;
-  const { zoom: z, created, joined } = await searchParams;
-  const zoom: TimelineZoom = z === '2w' || z === 'quarter' ? z : 'month';
+  const { created, joined } = await searchParams;
 
   const user = await requireUser();
   const project = await getProjectForUser(id, user.id);
@@ -68,17 +62,6 @@ export default async function GanttPage({
               <span className="h-3 w-px bg-rose-500" /> Hôm nay
             </span>
           </div>
-          <div className="flex border border-line bg-white text-xs">
-            {ZOOMS.map((zz) => (
-              <Link
-                key={zz.id}
-                href={`?zoom=${zz.id}`}
-                className={`px-3 py-1.5 ${zoom === zz.id ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-paper-2'}`}
-              >
-                {zz.label}
-              </Link>
-            ))}
-          </div>
         </div>
       </div>
 
@@ -93,7 +76,6 @@ export default async function GanttPage({
           milestones={milestones}
           tasks={tasks}
           members={members}
-          zoom={zoom}
           role={project.role}
           userId={user.id}
           today={today}
