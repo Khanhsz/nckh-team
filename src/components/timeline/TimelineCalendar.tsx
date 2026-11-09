@@ -103,16 +103,25 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
 
   useEffect(() => setTasks(tasksProp), [tasksProp]);
 
-  // Bảng tự cao tới đáy màn hình; chế độ toàn màn hình (Esc để thoát)
+  // Bảng cao bằng vùng nội dung trừ thanh công cụ (dính trên cùng khi cuộn trang):
+  // cuộn trang xuống thì ảnh bìa/tiêu đề trôi lên và bảng chiếm trọn màn hình. Chế độ toàn màn hình: Esc để thoát.
+  const toolbarRef = useRef<HTMLDivElement>(null);
   useLayoutEffect(() => {
     if (full) return;
+    const main = scrollRef.current?.closest('main') as HTMLElement | null;
     const measure = () => {
-      const el = scrollRef.current;
-      if (el) setFrameH(Math.max(320, window.innerHeight - el.getBoundingClientRect().top - 12));
+      const avail = (main?.clientHeight ?? window.innerHeight) - (toolbarRef.current?.offsetHeight ?? 52) - 28;
+      setFrameH(Math.max(320, avail));
     };
     measure();
+    const ro = new ResizeObserver(measure);
+    if (main) ro.observe(main);
+    if (toolbarRef.current) ro.observe(toolbarRef.current);
     window.addEventListener('resize', measure);
-    return () => window.removeEventListener('resize', measure);
+    return () => {
+      ro.disconnect();
+      window.removeEventListener('resize', measure);
+    };
   }, [full]);
   useEffect(() => {
     if (!full) return;
@@ -673,7 +682,10 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
 
   return (
     <div className={full ? 'fixed inset-0 z-40 flex flex-col gap-3 bg-white p-4' : 'flex flex-col gap-3'}>
-      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
+      <div
+        ref={toolbarRef}
+        className={`flex flex-wrap items-center gap-x-3 gap-y-2 ${full ? '' : 'sticky top-0 z-30 -mx-4 bg-white px-4 py-2'}`}
+      >
         {/* Điều hướng thời gian — như Google Calendar */}
         <button onClick={scrollToToday} className="h-9 rounded-full border border-ink-3/50 px-4 text-sm font-medium text-ink-2 hover:bg-paper-2">
           Hôm nay
@@ -833,7 +845,7 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
           });
         }}
         className={`thin-scroll overflow-auto rounded-2xl border border-line bg-white ${drag ? 'select-none' : ''} ${full ? 'min-h-0 flex-1' : ''}`}
-        style={full ? undefined : { height: frameH ?? 'calc(100vh - 200px)' }}
+        style={full ? undefined : { height: frameH === null ? 'calc(100vh - 200px)' : Math.min(frameH, scaleH + MS_H + bodyH + 2) }}
       >
         <div className="relative" style={{ width: LEFT_W + width }}>
           {/* ===== Header: tháng · ngày · dải mốc ===== */}
