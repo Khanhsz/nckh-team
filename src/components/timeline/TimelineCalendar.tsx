@@ -25,7 +25,7 @@ const PRESET_LABEL: Record<TimelineZoom, string> = { week: 'Tuần', month: 'Th�
 const MAX_DAYS_IN_VIEW = 31;
 const MIN_DAYS_IN_VIEW = 5;
 const DW_KEY = 'nckh-timeline-day-width';
-const LEFT_W = 200;
+const LEFT_W = 168;
 const SCALE_H = 46;
 const MS_H = 30;
 const CHIP_H = 26;
@@ -88,12 +88,34 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   const [quickTitle, setQuickTitle] = useState('');
   const [quickCategory, setQuickCategory] = useState<TaskCategory>('task');
   const [dialog, setDialog] = useState<DialogState | null>(null);
+  const dialogOpenRef = useRef(false);
+  dialogOpenRef.current = dialog !== null;
   const [flash, setFlash] = useState<{ type: 'ok' | 'error'; text: string } | null>(null);
   const [saving, startTransition] = useTransition();
   const scrollRef = useRef<HTMLDivElement>(null);
+  const [full, setFull] = useState(false);
+  const [frameH, setFrameH] = useState<number | null>(null);
   const bodyRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => setTasks(tasksProp), [tasksProp]);
+
+  // Bảng tự cao tới đáy màn hình; chế độ toàn màn hình (Esc để thoát)
+  useLayoutEffect(() => {
+    if (full) return;
+    const measure = () => {
+      const el = scrollRef.current;
+      if (el) setFrameH(Math.max(320, window.innerHeight - el.getBoundingClientRect().top - 12));
+    };
+    measure();
+    window.addEventListener('resize', measure);
+    return () => window.removeEventListener('resize', measure);
+  }, [full]);
+  useEffect(() => {
+    if (!full) return;
+    const onKey = (e: globalThis.KeyboardEvent) => e.key === 'Escape' && !dialogOpenRef.current && setFull(false);
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [full]);
   useEffect(() => setMilestones(msProp), [msProp]);
   useEffect(() => {
     if (!flash) return;
@@ -596,78 +618,163 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
   const movingTask = drag && drag.kind === 'move' && drag.moved ? tasks.find((t) => t.id === drag.id) : undefined;
   const ghostLane = movingTask && drag && drag.kind === 'move' && drag.laneKey !== drag.from ? laneByKey.get(drag.laneKey) : undefined;
 
+  // ---- Số liệu nhanh ----
+  const realTasks = tasks.filter((t) => !t.id.startsWith('temp-'));
+  const doneCount = realTasks.filter((t) => t.status === 'done').length;
+  const lateCount = realTasks.filter((t) => t.status !== 'done' && t.dueDate < today).length;
+  const reviewCount = realTasks.filter((t) => t.status === 'review').length;
+  const mineOpen = realTasks.filter((t) => t.status !== 'done' && isAssignedTo(t, userId)).length;
+  const overall = realTasks.length ? Math.round(realTasks.reduce((sum, t) => sum + t.progress, 0) / realTasks.length) : 0;
+  const scrollToToday = () => scrollRef.current?.scrollTo({ left: Math.max(0, x(today) - 4 * dw), behavior: 'smooth' });
+  const iconBtn = 'flex h-7 min-w-7 items-center justify-center border border-line bg-white px-1.5 text-[13px] leading-none text-zinc-700 hover:bg-paper-2';
+  const help = isOwner
+    ? [
+        'Quét chuột trên làn 👥 Cả nhóm để tạo việc chung, trên làn một người để giao riêng',
+        'Kéo ô để dời ngày · kéo mép trái/phải để đổi độ dài',
+        'Kéo ô sang làn khác để giao lại · kéo ◆ để dời mốc',
+        'Rê chuột lên việc để làm nổi việc cha, subtask và người cùng làm',
+        'Ctrl + cuộn chuột, hoặc kéo trên thanh ngày, để co giãn'
+      ]
+    : role === 'editor'
+      ? ['Quét trên làn của bạn để tự tạo việc', 'Kéo việc của bạn để dời / đổi độ dài', 'Bấm ô để xem chi tiết', 'Ctrl + cuộn chuột để co giãn']
+      : ['Bấm ô để xem chi tiết công việc', 'Ctrl + cuộn chuột để co giãn'];
+
   return (
-    <div className="space-y-2">
-      <div className="flex flex-wrap items-center gap-2 text-xs">
-        <span className="text-zinc-500">Độ rộng ngày</span>
-        <div className="flex border border-line bg-white">
-          {(Object.keys(PRESET_DAYS) as TimelineZoom[]).map((z) => (
-            <button
-              key={z}
-              onClick={() => zoomTo(viewW / PRESET_DAYS[z])}
-              className={`px-2.5 py-1 ${Math.abs(dw - viewW / PRESET_DAYS[z]) < 0.6 ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-paper-2'}`}
-            >
-              {PRESET_LABEL[z]}
-            </button>
-          ))}
-        </div>
-        <button onClick={() => zoomTo(dw / 1.25)} className="border border-line bg-white px-2 py-0.5 text-sm leading-5 hover:bg-paper-2" aria-label="Thu hẹp ngày">
-          −
-        </button>
-        <input
-          type="range"
-          min={Math.ceil(minDw)}
-          max={Math.floor(maxDw)}
-          step={1}
-          value={Math.round(dw)}
-          onChange={(e) => zoomTo(Number(e.target.value))}
-          aria-label="Độ rộng mỗi ngày"
-          className="w-40 accent-zinc-900"
-        />
-        <button onClick={() => zoomTo(dw * 1.25)} className="border border-line bg-white px-2 py-0.5 text-sm leading-5 hover:bg-paper-2" aria-label="Giãn rộng ngày">
-          +
-        </button>
-        <span className="w-16 font-mono text-zinc-600">{Math.round(dw)} px/ngày</span>
-        <span className="text-zinc-500">≈ {Math.round(viewW / dw)} ngày trong khung</span>
-        <span className="text-zinc-400">· kéo trên thanh ngày hoặc Ctrl + cuộn chuột để co giãn</span>
-        <span className="ml-auto flex items-center gap-3 text-zinc-500" aria-label="Chú thích màu">
-          {TASK_CATEGORIES.map((c) => (
-            <span key={c} className="flex items-center gap-1">
-              <span className={`inline-block h-2.5 w-2.5 rounded-sm ${CATEGORY_STYLE[c].fill}`} />
-              {TASK_CATEGORY_LABEL[c]}
+    <div className={full ? 'fixed inset-0 z-40 flex flex-col gap-2 bg-paper p-3' : 'flex flex-col gap-2'}>
+      <div className="flex flex-wrap items-center gap-2">
+        {/* Số liệu nổi bật */}
+        <div className="flex items-stretch divide-x divide-line border border-line bg-white">
+          <div className="flex items-center gap-2 px-3 py-1" title="Tiến độ trung bình mọi công việc">
+            <span className="text-[10px] uppercase tracking-wider text-zinc-500">Tiến độ</span>
+            <span className="text-lg font-bold tabular-nums leading-none">{overall}%</span>
+            <span className="h-1.5 w-14 overflow-hidden rounded-full bg-zinc-200">
+              <span className="block h-full rounded-full bg-emerald-600" style={{ width: `${overall}%` }} />
             </span>
-          ))}
-          <span className="flex items-center gap-1 border-l border-line pl-3">
-            <span className="inline-block h-2.5 w-3.5 rounded-sm border-2 border-dashed border-zinc-500" />
-            Chờ duyệt
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="inline-flex h-3 w-5 items-center rounded-sm border border-l-[3px] border-zinc-400 border-l-zinc-600 bg-white text-[8px] leading-none text-zinc-500">↳</span>
-            Subtask
-          </span>
-          <span className="flex items-center gap-1">
-            <span className="rounded-full bg-zinc-900/80 px-1.5 text-[10px] font-semibold leading-4 text-white">2👤</span>
-            Nhiều người cùng làm
-          </span>
-        </span>
-      </div>
-      <div className="flex min-h-7 flex-wrap items-center gap-3 text-xs">
-        <span className="text-zinc-500">
-          {isOwner
-            ? 'Quét trên làn 👥 Cả nhóm để tạo việc chung, hoặc trên làn một người để giao riêng · rê chuột lên việc để xem việc cha & subtask · kéo ô để dời · kéo mép để đổi độ dài · kéo sang làn khác để giao lại · kéo ◆ để dời mốc'
-            : role === 'editor'
-              ? 'Quét trên làn của bạn để tự tạo việc · kéo việc của bạn để dời / đổi độ dài · bấm ô để xem chi tiết'
-              : 'Bấm ô để xem chi tiết công việc'}
-        </span>
-        {stretching && <span className="bg-zinc-900 px-2 py-0.5 font-mono text-white">{Math.round(dw)} px/ngày</span>}
-        {dragLabel && <span className="bg-zinc-900 px-2 py-0.5 font-mono text-white">{dragLabel}</span>}
-        {!dragLabel && saving && <span className="text-zinc-500">Đang lưu…</span>}
-        {!dragLabel && !saving && flash && (
-          <span className={`px-2 py-0.5 ${flash.type === 'error' ? 'bg-rose-50 text-rose-800' : 'bg-emerald-50 text-emerald-800'}`}>{flash.text}</span>
-        )}
+          </div>
+          <div className="flex items-center gap-1.5 px-3 py-1" title="Việc đã hoàn thành / tổng số việc">
+            <span className="text-emerald-700">✓</span>
+            <span className="text-lg font-bold tabular-nums leading-none">
+              {doneCount}
+              <span className="text-sm font-medium text-zinc-400">/{realTasks.length}</span>
+            </span>
+          </div>
+          <div className={`flex items-center gap-1.5 px-3 py-1 ${lateCount ? 'bg-rose-50 text-rose-700' : 'text-zinc-400'}`} title="Việc chưa xong đã quá hạn">
+            <span>⚠</span>
+            <span className="text-lg font-bold tabular-nums leading-none">{lateCount}</span>
+            <span className="text-[10px] uppercase tracking-wider">quá hạn</span>
+          </div>
+          {reviewCount > 0 && (
+            <div className="flex items-center gap-1.5 bg-amber-50 px-3 py-1 text-amber-800" title="Việc đang chờ trưởng nhóm duyệt">
+              <span>⏳</span>
+              <span className="text-lg font-bold tabular-nums leading-none">{reviewCount}</span>
+              <span className="text-[10px] uppercase tracking-wider">chờ duyệt</span>
+            </div>
+          )}
+          {role !== 'viewer' && (
+            <div className="flex items-center gap-1.5 px-3 py-1 text-sky-800" title="Việc của bạn chưa xong">
+              <span>👤</span>
+              <span className="text-lg font-bold tabular-nums leading-none">{mineOpen}</span>
+              <span className="text-[10px] uppercase tracking-wider">của bạn</span>
+            </div>
+          )}
+        </div>
+
+        {/* Trạng thái thao tác */}
+        <div className="min-w-0 flex-1 text-xs">
+          {(stretching || dragLabel) && (
+            <span className="bg-zinc-900 px-2 py-1 font-mono text-white">{dragLabel ?? `${Math.round(viewW / dw)} ngày trong khung`}</span>
+          )}
+          {!dragLabel && !stretching && saving && <span className="text-zinc-500">Đang lưu…</span>}
+          {!dragLabel && !stretching && !saving && flash && (
+            <span className={`inline-block max-w-full truncate px-2 py-1 align-middle ${flash.type === 'error' ? 'bg-rose-50 text-rose-800' : 'bg-emerald-50 text-emerald-800'}`}>
+              {flash.text}
+            </span>
+          )}
+        </div>
+
+        {/* Điều khiển dạng icon */}
+        <div className="flex items-center gap-1 text-xs">
+          <div className="flex border border-line bg-white">
+            {(Object.keys(PRESET_DAYS) as TimelineZoom[]).map((z) => (
+              <button
+                key={z}
+                onClick={() => zoomTo(viewW / PRESET_DAYS[z])}
+                className={`h-7 px-2.5 ${Math.abs(dw - viewW / PRESET_DAYS[z]) < 0.6 ? 'bg-zinc-900 text-white' : 'text-zinc-600 hover:bg-paper-2'}`}
+              >
+                {PRESET_LABEL[z]}
+              </button>
+            ))}
+          </div>
+          <button onClick={() => zoomTo(dw / 1.25)} className={iconBtn} title="Thu hẹp ngày (Ctrl + cuộn xuống)" aria-label="Thu hẹp ngày">
+            −
+          </button>
+          <button onClick={() => zoomTo(dw * 1.25)} className={iconBtn} title="Giãn rộng ngày (Ctrl + cuộn lên)" aria-label="Giãn rộng ngày">
+            +
+          </button>
+          <button onClick={scrollToToday} className={iconBtn} title="Cuộn tới hôm nay" aria-label="Hôm nay">
+            📍
+          </button>
+          <details className="relative">
+            <summary className={`${iconBtn} cursor-pointer list-none`} title="Chú thích & hướng dẫn" aria-label="Chú thích và hướng dẫn">
+              ⓘ
+            </summary>
+            <div className="absolute right-0 z-50 mt-1 w-80 space-y-3 border border-zinc-900 bg-white p-3 text-xs shadow-xl">
+              <div>
+                <p className="mb-1.5 font-semibold">Chú thích</p>
+                <div className="grid grid-cols-2 gap-x-3 gap-y-1.5 text-zinc-600">
+                  {TASK_CATEGORIES.map((c) => (
+                    <span key={c} className="flex items-center gap-1.5">
+                      <span className={`inline-block h-3 w-3 rounded-sm ${CATEGORY_STYLE[c].fill}`} />
+                      {TASK_CATEGORY_LABEL[c]}
+                    </span>
+                  ))}
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block h-3 w-4 rounded-sm border-2 border-dashed border-zinc-500" />
+                    Chờ duyệt
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-block h-3 w-4 rounded-sm ring-2 ring-rose-500" />
+                    Quá hạn
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="inline-flex h-3 w-5 items-center rounded-sm border border-l-[3px] border-zinc-400 border-l-zinc-600 bg-white text-[8px] leading-none text-zinc-500">↳</span>
+                    Subtask
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="rounded-full bg-zinc-900/80 px-1.5 text-[10px] font-semibold leading-4 text-white">2👤</span>
+                    Nhiều người làm
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="rounded-sm bg-zinc-100 px-1 text-[10px] font-semibold text-zinc-600">☰3</span>
+                    Có subtask
+                  </span>
+                  <span className="flex items-center gap-1.5">
+                    <span className="block h-2.5 w-2.5 rotate-45 bg-accent" />
+                    Mốc
+                  </span>
+                </div>
+              </div>
+              <div>
+                <p className="mb-1 font-semibold">Thao tác</p>
+                <ul className="list-disc space-y-0.5 pl-4 text-zinc-600">
+                  {help.map((h) => (
+                    <li key={h}>{h}</li>
+                  ))}
+                </ul>
+              </div>
+            </div>
+          </details>
+          <button onClick={() => setFull((f) => !f)} className={iconBtn} title={full ? 'Thoát toàn màn hình (Esc)' : 'Toàn màn hình'} aria-label="Toàn màn hình">
+            {full ? '✕' : '⛶'}
+          </button>
+        </div>
       </div>
 
-      <div ref={scrollRef} className={`thin-scroll overflow-auto border border-line bg-white ${drag ? 'select-none' : ''}`} style={{ maxHeight: 'calc(100vh - 300px)' }}>
+      <div
+        ref={scrollRef}
+        className={`thin-scroll overflow-auto border border-line bg-white ${drag ? 'select-none' : ''} ${full ? 'min-h-0 flex-1' : ''}`}
+        style={full ? undefined : { height: frameH ?? 'calc(100vh - 200px)' }}
+      >
         <div className="relative" style={{ width: LEFT_W + width }}>
           {/* ===== Header: tháng · ngày · dải mốc ===== */}
           <div className="sticky top-0 z-30 flex border-b border-line bg-white" style={{ height: SCALE_H + MS_H }}>
@@ -678,23 +785,32 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
             </div>
             <div className="relative" style={{ width }}>
               {months.map((m) => (
-                <div key={m.key} className="absolute top-0 h-6 truncate border-l border-line px-2 text-[12px] font-semibold leading-6 text-zinc-800" style={{ left: m.left, width: m.width }}>
-                  {m.width > 60 ? m.label : ''}
+                <div key={m.key} className="absolute top-0 h-6 border-l border-line text-[12px] font-semibold leading-6 text-zinc-800" style={{ left: m.left, width: m.width }}>
+                  {/* Nhãn tháng bám mép trái khi tháng bắt đầu ngoài khung nhìn */}
+                  {m.width > 60 && (
+                    <span className="sticky inline-block whitespace-nowrap px-2" style={{ left: LEFT_W }}>
+                      {m.label}
+                    </span>
+                  )}
                 </div>
               ))}
               {dw < 18
                 ? days
                     .filter((d) => d.wd === 1)
                     .map((d) => (
-                      <div key={d.iso} className="absolute top-6 h-5 border-l border-line/70 pl-1 text-[10px] leading-5 text-zinc-500" style={{ left: d.left, width: 7 * dw }}>
+                      <div key={d.iso} className="absolute top-6 h-5 border-l border-line/70 pl-1 text-[11px] font-semibold tabular-nums leading-5 text-zinc-700" style={{ left: d.left, width: 7 * dw }}>
                         {formatShort(d.iso)}
                       </div>
                     ))
                 : days.map((d) => (
                     <div
                       key={d.iso}
-                      className={`absolute top-6 h-5 border-l border-line/60 text-center text-[10px] leading-5 ${
-                        d.iso === today ? 'bg-rose-500 font-bold text-white' : d.wd === 0 || d.wd === 6 ? 'text-zinc-400' : 'text-zinc-600'
+                      className={`absolute top-6 h-5 border-l border-line/60 text-center tabular-nums leading-5 ${dw >= 24 ? 'text-[12px]' : 'text-[10px]'} ${
+                        d.iso === today
+                          ? 'rounded-sm bg-rose-500 font-bold text-white'
+                          : d.wd === 0 || d.wd === 6
+                            ? 'text-zinc-400'
+                            : 'font-semibold text-zinc-800'
                       }`}
                       style={{ left: d.left, width: dw }}
                     >
@@ -769,9 +885,18 @@ export function TimelineCalendar({ project, milestones: msProp, tasks: tasksProp
                     className={`sticky left-0 z-20 flex flex-col justify-center border-r border-line px-3 ${lane.team ? 'bg-[#f6f8fb]' : 'bg-white'}`}
                     style={{ width: LEFT_W, minWidth: LEFT_W }}
                   >
-                    <p className={`truncate text-[13px] font-medium ${lane.key === 'none' ? 'text-zinc-500' : ''} ${lane.team ? 'font-semibold' : ''}`}>{lane.label}</p>
+                    <p
+                      className={`truncate text-[13px] font-medium ${lane.key === 'none' ? 'text-zinc-500' : ''} ${lane.team ? 'font-semibold' : ''}`}
+                      title={lane.sub ? `${lane.label} — ${lane.sub}` : lane.label}
+                    >
+                      {lane.label}
+                      {lane.sub === 'Trưởng nhóm' && <span className="ml-1 text-[10px] text-amber-600">★</span>}
+                    </p>
                     <p className="truncate text-[11px] text-zinc-500">
-                      {lane.tasks.filter((t) => t.status !== 'done').length} việc đang mở{lane.sub ? ` · ${lane.sub}` : ''}
+                      <b className="tabular-nums text-zinc-800">{lane.tasks.filter((t) => t.status !== 'done').length}</b> đang mở
+                      {lane.tasks.some((t) => t.status !== 'done' && t.dueDate < today) && (
+                        <span className="ml-1 font-semibold text-rose-700">· {lane.tasks.filter((t) => t.status !== 'done' && t.dueDate < today).length} trễ</span>
+                      )}
                     </p>
                   </div>
                   <div
