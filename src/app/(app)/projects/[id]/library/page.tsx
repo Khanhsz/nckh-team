@@ -9,6 +9,8 @@ import { PAPER_STATUS_LABEL, type PaperStatus } from '@/lib/types';
 import { AcademicText } from '@/components/library/AcademicText';
 import { AutoRefresh, ConnectFolderForm, ExtractQueue, MetaQueue, SyncButton } from '@/components/library/LibraryControls';
 import { CredibilityCell, flagLevel } from '@/components/library/Credibility';
+import { CitationExport } from '@/components/library/CitationExport';
+import { asRelFilter, filterPapers, matchesRel, REL_FILTERS } from '@/lib/library/filter';
 import { LibraryFrame } from '@/components/library/LibraryFrame';
 import { disconnectDriveFolderAction } from './actions';
 
@@ -51,34 +53,10 @@ export default async function LibraryPage({
   const density = DENSITY.find((x) => x.id === d) ?? DENSITY[1];
   const columns = PAPER_FIELDS.filter((f) => (preset.keys as readonly string[]).includes(f.key));
 
-  const query = (q ?? '').trim().toLowerCase();
-  const RELS = [
-    { id: '', label: 'Tất cả' },
-    { id: 'q12', label: 'Q1–Q2' },
-    { id: 'warn', label: '⚠ Cảnh báo / lưu ý' },
-    { id: 'none', label: 'Không xếp hạng' }
-  ] as const;
-  const relFilter = RELS.find((r) => r.id === rel)?.id ?? '';
-  const relMatch = (pid: string) => {
-    const c = credMap.get(pid);
-    if (relFilter === 'q12') return c?.quartile === 'Q1' || c?.quartile === 'Q2';
-    if (relFilter === 'warn') return Boolean(c?.flags.length);
-    if (relFilter === 'none') return !c?.quartile;
-    return true;
-  };
-  const relCount = (id: string) =>
-    papers.filter((p) => {
-      const c = credMap.get(p.id);
-      return id === 'q12' ? c?.quartile === 'Q1' || c?.quartile === 'Q2' : id === 'warn' ? Boolean(c?.flags.length) : id === 'none' ? !c?.quartile : true;
-    }).length;
-  const visible = papers.filter(
-    (p) =>
-      relMatch(p.id) &&
-      (!query ||
-        p.fileName.toLowerCase().includes(query) ||
-        (p.pub.journal ?? '').toLowerCase().includes(query) ||
-        Object.values(p.fields).some((v) => v.toLowerCase().includes(query)))
-  );
+  const RELS = REL_FILTERS;
+  const relFilter = asRelFilter(rel);
+  const relCount = (id: string) => papers.filter((p) => matchesRel(id, credMap.get(p.id))).length;
+  const visible = filterPapers(papers, credMap, { rel: relFilter, q });
   const needMeta = papers.filter((p) => !p.pub.checkedAt).map((p) => p.id);
   const toExtract = papers.filter((p) => p.status === 'pending' || p.status === 'stale' || p.status === 'error').map((p) => p.id);
   const done = papers.filter((p) => p.status === 'completed').length;
@@ -159,6 +137,11 @@ export default async function LibraryPage({
           className="w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-800"
         />
       </form>
+      <CitationExport
+        projectId={id}
+        count={visible.length}
+        query={new URLSearchParams({ ...(relFilter ? { rel: relFilter } : {}), ...(q ? { q } : {}) }).toString()}
+      />
     </>
   );
 

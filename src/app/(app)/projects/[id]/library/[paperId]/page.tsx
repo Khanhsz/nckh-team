@@ -5,6 +5,7 @@ import { getCatalogStatus, getPaper, getProjectForUser, listMembers, listPaperCr
 import { CredibilityCell } from '@/components/library/Credibility';
 import { PublicationEditor } from '@/components/library/PublicationEditor';
 import { QuickWatch } from '@/components/library/QuickWatch';
+import { CitationExport } from '@/components/library/CitationExport';
 import { geminiConfigured } from '@/lib/ai/extract';
 import { PAPER_FIELDS } from '@/lib/ai/fields';
 import { PAPER_STATUS_LABEL } from '@/lib/types';
@@ -61,6 +62,7 @@ export default async function PaperPage({ params }: { params: Promise<{ id: stri
               Mở PDF trên Drive ↗
             </a>
           )}
+          <CitationExport projectId={id} count={1} query={`ids=${paper.id}`} />
           {canEdit && geminiConfigured() && (
             <ExtractOneButton paperId={paper.id} label={hasResult ? 'Trích xuất lại (xoá trạng thái duyệt)' : '✦ Trích xuất bằng AI'} />
           )}

@@ -30,11 +30,12 @@ export interface ExtractionResult {
   warnings: string[];
   model: string;
   /** Thông tin xuất bản đọc từ PDF (chuỗi rỗng nếu bài không ghi) */
-  publication: { title: string; doi: string; journal: string; issn: string; publisher: string; year: string };
+  publication: { title: string; authors: string; doi: string; journal: string; issn: string; publisher: string; year: string };
 }
 
 const PUB_FIELDS = {
   pubTitle: 'Tiêu đề gốc của bài báo, chép nguyên văn (không dịch).',
+  pubAuthors: 'Danh sách tác giả theo đúng thứ tự trên bài, dạng "Họ, Tên; Họ, Tên" (vd. "Bakker, Arnold B.; Demerouti, Evangelia"). Không có thì chuỗi rỗng.',
   pubDoi: 'DOI của bài nếu in trên bài (dạng 10.xxxx/...). Không có thì để chuỗi rỗng.',
   pubJournal: 'Tên tạp chí/kỷ yếu đăng bài, chép nguyên văn. Không có thì để chuỗi rỗng.',
   pubIssn: 'ISSN và/hoặc e-ISSN nếu in trên bài (vd. "1234-5678, 2345-6789"). Không có thì để chuỗi rỗng — TUYỆT ĐỐI không đoán.',
@@ -71,7 +72,7 @@ export async function extractPaper(pdf: Buffer, opts: { fileName: string; projec
 
 Đề tài của nhóm (dùng cho trường relevanceToMyResearch): ${opts.projectTopic || '(nhóm chưa mô tả đề tài — ghi "Nhóm chưa mô tả đề tài để so sánh.")'}
 
-Trước tiên ghi thông tin xuất bản (pubTitle, pubDoi, pubJournal, pubIssn, pubPublisher, pubYear) đúng như in trên bài — thường ở trang đầu, đầu/chân trang. Trường nào bài không ghi thì để chuỗi rỗng.
+Trước tiên ghi thông tin xuất bản (pubTitle, pubAuthors, pubDoi, pubJournal, pubIssn, pubPublisher, pubYear) đúng như in trên bài — thường ở trang đầu, đầu/chân trang. Trường nào bài không ghi thì để chuỗi rỗng.
 
 Sau đó điền các trường sau:
 ${fieldGuide}`;
@@ -127,6 +128,7 @@ ${fieldGuide}`;
   const str = (v: unknown) => (typeof v === 'string' ? v.trim().slice(0, 500) : '');
   const publication = {
     title: str(parsed.pubTitle),
+    authors: str(parsed.pubAuthors).slice(0, 2000),
     doi: str(parsed.pubDoi),
     journal: str(parsed.pubJournal),
     issn: str(parsed.pubIssn),

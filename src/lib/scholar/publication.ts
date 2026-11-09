@@ -11,7 +11,24 @@ export interface PublicationMeta {
   publisher: string | null;
   year: number | null;
   citedBy: number | null;
+  /** Dữ liệu trích dẫn đầy đủ (tác giả, tập, số, trang) — có khi tra được Crossref */
+  csl: CslItem | null;
   source: 'gemini' | 'crossref' | 'gemini+crossref' | 'none';
+}
+
+/** Tập con CSL tối thiểu để định dạng APA / BibTeX / RIS */
+export interface CslItem {
+  type: string;
+  title: string | null;
+  authors: { family: string; given: string | null }[];
+  container: string | null;
+  volume: string | null;
+  issue: string | null;
+  page: string | null;
+  articleNumber: string | null;
+  year: number | null;
+  publisher: string | null;
+  doi: string | null;
 }
 
 const UA = 'NCKH-Team/1.0 (+https://nckh-team.vercel.app; research-group literature tool)';
@@ -50,6 +67,11 @@ const clean = (s: unknown) => (typeof s === 'string' && s.trim() && !/không (đ
 
 interface CrossrefWork {
   DOI?: string;
+  author?: { family?: string; given?: string; name?: string }[];
+  volume?: string;
+  issue?: string;
+  page?: string;
+  'article-number'?: string;
   title?: string[];
   'container-title'?: string[];
   ISSN?: string[];
@@ -93,13 +115,32 @@ function titleCoverage(candidateTitle: string, reference: string): number {
 
 function fromWork(w: CrossrefWork): Omit<PublicationMeta, 'source'> {
   const dp = w.issued?.['date-parts']?.[0] ?? w['published-print']?.['date-parts']?.[0] ?? w['published-online']?.['date-parts']?.[0];
+  const year = dp?.[0] ? parseYear(dp[0]) : null;
+  const doi = normalizeDoi(w.DOI);
+  const csl: CslItem = {
+    type: w.type ?? 'journal-article',
+    title: w.title?.[0]?.replace(/\s+/g, ' ').trim().slice(0, 500) ?? null,
+    authors: (w.author ?? [])
+      .map((a) => ({ family: (a.family ?? a.name ?? '').trim(), given: a.given?.trim() || null }))
+      .filter((a) => a.family)
+      .slice(0, 60),
+    container: w['container-title']?.[0]?.slice(0, 300) ?? null,
+    volume: w.volume?.slice(0, 20) ?? null,
+    issue: w.issue?.slice(0, 20) ?? null,
+    page: w.page?.slice(0, 30) ?? null,
+    articleNumber: w['article-number']?.slice(0, 30) ?? null,
+    year,
+    publisher: w.publisher?.slice(0, 300) ?? null,
+    doi
+  };
   return {
-    doi: normalizeDoi(w.DOI),
+    csl,
+    doi,
     title: w.title?.[0]?.slice(0, 500) ?? null,
     journal: w['container-title']?.[0]?.slice(0, 300) ?? null,
     issns: normalizeIssns([...(w.ISSN ?? []), ...(w['issn-type'] ?? []).map((x) => x.value)]),
     publisher: w.publisher?.slice(0, 300) ?? null,
-    year: dp?.[0] ? parseYear(dp[0]) : null,
+    year,
     citedBy: typeof w['is-referenced-by-count'] === 'number' ? w['is-referenced-by-count'] : null
   };
 }
@@ -116,7 +157,8 @@ export async function crossrefLookup(opts: { doi?: string | null; bibliographic?
   const q = new URLSearchParams({
     'query.bibliographic': ref,
     rows: '3',
-    select: 'DOI,title,container-title,ISSN,issn-type,publisher,issued,published-print,published-online,is-referenced-by-count,type,score'
+    select:
+      'DOI,title,author,volume,issue,page,article-number,container-title,ISSN,issn-type,publisher,issued,published-print,published-online,is-referenced-by-count,type,score'
   });
   const j = (await crossrefGet(`https://api.crossref.org/works?${q}`)) as { message?: { items?: CrossrefWork[] } } | null;
   const items = j?.message?.items ?? [];
@@ -129,9 +171,23 @@ export async function crossrefLookup(opts: { doi?: string | null; bibliographic?
 }
 
 /** Gộp thông tin Gemini đọc được từ PDF với Crossref (Crossref ưu tiên cho DOI/ISSN/trích dẫn). */
+/** "Họ, Tên; Họ, Tên" → danh sách tác giả */
+export function parseAuthors(s: string | null | undefined): CslItem['authors'] {
+  return (s ?? '')
+    .split(/;|\n/)
+    .map((x) => x.trim())
+    .filter((x) => x.length > 1 && !/không|not found/i.test(x))
+    .slice(0, 60)
+    .map((x) => {
+      const [family, ...rest] = x.split(',');
+      return { family: family.trim(), given: rest.join(',').trim() || null };
+    });
+}
+
 export async function resolvePublication(input: {
   doi?: string | null;
   title?: string | null;
+  authors?: string | null;
   journal?: string | null;
   issns?: string[] | string | null;
   publisher?: string | null;
@@ -148,7 +204,14 @@ export async function resolvePublication(input: {
   };
   const hasGemini = Boolean(g.doi || g.journal || g.issns.length);
   const c = await crossrefLookup({ doi: g.doi, title: g.title, bibliographic: input.bibliographic });
-  if (!c) return { ...g, citedBy: null, source: hasGemini ? 'gemini' : 'none' };
+  if (!c) {
+    // Không có Crossref: dựng CSL từ thông tin AI đọc trên PDF (nếu đủ tên bài)
+    const authors = parseAuthors(input.authors);
+    const csl: CslItem | null = g.title
+      ? { type: 'journal-article', title: g.title, authors, container: g.journal, volume: null, issue: null, page: null, articleNumber: null, year: g.year, publisher: g.publisher, doi: g.doi }
+      : null;
+    return { ...g, citedBy: null, csl, source: hasGemini ? 'gemini' : 'none' };
+  }
   return {
     doi: c.doi ?? g.doi,
     title: c.title ?? g.title,
@@ -157,6 +220,12 @@ export async function resolvePublication(input: {
     publisher: c.publisher ?? g.publisher,
     year: c.year ?? g.year,
     citedBy: c.citedBy,
+    csl: c.csl,
     source: hasGemini ? 'gemini+crossref' : 'crossref'
   };
+}
+
+/** Lấy lại bản ghi Crossref đầy đủ theo DOI (dùng khi xuất trích dẫn cho bài cũ chưa có tác giả) */
+export async function crossrefByDoi(doi: string): Promise<Omit<PublicationMeta, 'source'> | null> {
+  return crossrefLookup({ doi });
 }

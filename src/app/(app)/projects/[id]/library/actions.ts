@@ -11,6 +11,7 @@ import { isPaperFieldKey } from '@/lib/ai/fields';
 import { str } from '@/lib/site';
 import { normalizeDoi, normalizeIssns, parseYear, resolvePublication, type PublicationMeta } from '@/lib/scholar/publication';
 import type { FormState } from '@/lib/auth/actions';
+import type { Json } from '@/lib/supabase/database.types';
 
 const MAX_PDF_BYTES = 14 * 1024 * 1024; // giới hạn gửi trực tiếp cho Gemini (sau base64 < 20 MB)
 const refresh = () => revalidatePath('/', 'layout');
@@ -28,6 +29,7 @@ async function savePublication(paperId: string, meta: PublicationMeta) {
     publisher?: string;
     pub_year?: number;
     cited_by?: number;
+    csl?: Json;
   } = { meta_checked_at: new Date().toISOString(), meta_source: meta.source };
   if (meta.doi) patch.doi = meta.doi;
   if (meta.journal) patch.journal = meta.journal;
@@ -35,6 +37,7 @@ async function savePublication(paperId: string, meta: PublicationMeta) {
   if (meta.publisher) patch.publisher = meta.publisher;
   if (meta.year) patch.pub_year = meta.year;
   if (meta.citedBy !== null) patch.cited_by = meta.citedBy;
+  if (meta.csl) patch.csl = meta.csl as unknown as Json;
   return supabase.from('papers').update(patch).eq('id', paperId).select('id');
 }
 

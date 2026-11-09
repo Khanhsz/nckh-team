@@ -1,6 +1,6 @@
 import type { Database } from '../supabase/database.types';
 import type { Milestone, Paper, PaperStatus, Profile, Project, ProjectRole, Task, TaskStatus } from '../types';
-import { isTaskCategory } from '../types';
+import { isTaskCategory, type CslItem } from '../types';
 
 type T = Database['public']['Tables'];
 
@@ -93,7 +93,8 @@ export const mapPaper = (r: T['papers']['Row']): Paper => {
       year: r.pub_year ?? null,
       citedBy: r.cited_by ?? null,
       source: r.meta_source ?? null,
-      checkedAt: r.meta_checked_at ?? null
+      checkedAt: r.meta_checked_at ?? null,
+      csl: r.csl && typeof r.csl === 'object' && !Array.isArray(r.csl) ? (r.csl as unknown as CslItem) : null
     }
   };
 };

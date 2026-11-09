@@ -1,7 +1,10 @@
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import { requireUser } from '@/lib/auth/session';
-import { listMyProjects, listTasksAndMilestonesFor } from '@/lib/data/queries';
+import { getNotifySettings, listMyProjects, listTasksAndMilestonesFor } from '@/lib/data/queries';
+import { ReminderCard } from '@/components/notify/ReminderCard';
+import { smtpConfigured } from '@/lib/mail/smtp';
+import { getSiteUrl } from '@/lib/site';
 import { addDays, dueLabel, formatShort, todayISO } from '@/lib/dates';
 import { isAssignedTo, projectLabel, ROLE_LABEL, type ProjectWithRole, type Task } from '@/lib/types';
 import { ProgressBar, StatusBadge } from '@/components/ui/badges';
@@ -10,7 +13,11 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
   const { welcome, pw } = await searchParams;
   const user = await requireUser();
   const projects = await listMyProjects(user.id);
-  const { tasks, milestones } = await listTasksAndMilestonesFor(projects.map((p) => p.id));
+  const [{ tasks, milestones }, notify, site] = await Promise.all([
+    listTasksAndMilestonesFor(projects.map((p) => p.id)),
+    getNotifySettings(user.id),
+    getSiteUrl()
+  ]);
 
   const today = todayISO();
   const in7 = addDays(today, 7);
@@ -93,6 +100,15 @@ export default async function TodayPage({ searchParams }: { searchParams: Promis
           </section>
         </>
       )}
+
+      <div id="reminders" className="scroll-mt-4">
+        <ReminderCard
+          calendarUrl={notify.calendarToken ? `${site}/api/calendar/${notify.calendarToken}.ics` : null}
+          digest={notify.digestEmail}
+          smtpReady={smtpConfigured()}
+          email={user.email}
+        />
+      </div>
     </div>
   );
 }

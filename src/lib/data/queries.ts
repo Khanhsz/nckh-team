@@ -177,3 +177,9 @@ export const listWatchlist = cache(async (projectId: string): Promise<WatchItem[
   const { data } = await sb.from('project_watchlist').select('id, kind, name, note, created_at').eq('project_id', projectId).order('kind').order('name');
   return (data ?? []).map((r) => ({ id: r.id, kind: r.kind === 'journal' ? 'journal' : 'publisher', name: r.name, note: r.note, createdAt: r.created_at }));
 });
+
+export async function getNotifySettings(userId: string): Promise<{ calendarToken: string | null; digestEmail: boolean }> {
+  const sb = await createClient();
+  const { data } = await sb.from('user_notify').select('calendar_token, digest_email').eq('user_id', userId).maybeSingle();
+  return { calendarToken: data?.calendar_token ?? null, digestEmail: data?.digest_email ?? true };
+}

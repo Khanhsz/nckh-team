@@ -1,3 +1,6 @@
+import type { CslItem } from './scholar/publication';
+export type { CslItem };
+
 /** Kiểu dữ liệu miền (camelCase) — ánh xạ từ các bảng Supabase trong src/lib/data/mappers.ts */
 
 export type ProjectRole = 'owner' | 'editor' | 'viewer';
@@ -105,6 +108,8 @@ export interface PaperPublication {
   citedBy: number | null;
   source: string | null;
   checkedAt: string | null;
+  /** Dữ liệu trích dẫn đầy đủ từ Crossref (tác giả, tập, số, trang) */
+  csl: CslItem | null;
 }
 
 export type JournalFlagKind = 'scopus_discontinued' | 'beall_journal' | 'beall_publisher' | 'team_watch';
