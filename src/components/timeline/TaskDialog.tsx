@@ -4,6 +4,7 @@ import { useEffect, useRef, useState, useTransition } from 'react';
 import type { Member, Milestone, ProjectRole, Task, TaskCategory, TaskStatus } from '@/lib/types';
 import { isAssignedTo, TASK_CATEGORIES, TASK_CATEGORY_LABEL, TASK_STATUS_LABEL, TASK_STATUSES } from '@/lib/types';
 import { CATEGORY_STYLE } from '@/components/ui/badges';
+import { AssigneePicker, type AssigneeValue } from '@/components/tasks/AssigneePicker';
 import { diffDays, isValidISODate } from '@/lib/dates';
 import { createTaskQuickAction, deleteTaskByIdAction, updateTaskAction } from '@/app/(app)/projects/[id]/tasks/actions';
 
@@ -56,6 +57,8 @@ export function TaskDialog({
   const [parentId, setParentId] = useState<string>(editing ? editing.parentId ?? '' : state.mode === 'create' ? state.parentId ?? '' : '');
   const [coIds, setCoIds] = useState<string[]>(editing?.coAssigneeIds ?? (state.mode === 'create' ? state.coAssigneeIds ?? [] : []));
   const [error, setError] = useState<string | null>(null);
+  const who: AssigneeValue =
+    assigneeId === TEAM ? { team: true, ids: [] } : { team: false, ids: [...(assigneeId ? [assigneeId] : []), ...coIds.filter((id) => id !== assigneeId)] };
   const [confirmDelete, setConfirmDelete] = useState(false);
   const [pending, start] = useTransition();
   const titleRef = useRef<HTMLInputElement>(null);
@@ -68,7 +71,6 @@ export function TaskDialog({
   }, [onClose]);
 
   const days = isValidISODate(startDate) && isValidISODate(dueDate) ? diffDays(startDate, dueDate) + 1 : null;
-  const assignable = members.filter((m) => m.role !== 'viewer');
   const depCandidates = tasks.filter((t) => t.id !== editing?.id);
   const children = editing ? tasks.filter((t) => t.parentId === editing.id) : [];
   // Chỉ 1 cấp: cha phải là việc chính; việc đang có subtask thì không làm subtask được
@@ -209,46 +211,19 @@ export function TaskDialog({
             </div>
             <div>
               <label className={label}>Người phụ trách</label>
-              <select value={assigneeId} onChange={(e) => setAssigneeId(e.target.value)} disabled={!isOwner} className={field}>
-                <option value="">— Chưa giao —</option>
-                {!parentId && <option value={TEAM}>👥 Cả nhóm</option>}
-                {assignable.map((m) => (
-                  <option key={m.userId} value={m.userId}>
-                    {m.displayName}
-                    {m.userId === userId ? ' (bạn)' : ''}
-                  </option>
-                ))}
-              </select>
+              <AssigneePicker
+                value={who}
+                onChange={(v) => {
+                  setAssigneeId(v.team ? TEAM : v.ids[0] ?? '');
+                  setCoIds(v.team ? [] : v.ids.slice(1));
+                }}
+                members={members}
+                allowTeam={!parentId}
+                disabled={!isOwner}
+                currentUserId={userId}
+              />
             </div>
           </div>
-
-          {assigneeId !== TEAM && (isOwner || coIds.length > 0) && (
-            <div>
-              <label className={label}>Người cùng làm {coIds.length > 0 && `(${coIds.length})`}</label>
-              <div className="flex flex-wrap gap-1.5">
-                {assignable
-                  .filter((m) => m.userId !== assigneeId)
-                  .filter((m) => isOwner || coIds.includes(m.userId))
-                  .map((m) => {
-                    const on = coIds.includes(m.userId);
-                    return (
-                      <button
-                        key={m.userId}
-                        type="button"
-                        aria-pressed={on}
-                        disabled={!isOwner}
-                        onClick={() => setCoIds((c) => (on ? c.filter((x) => x !== m.userId) : [...c, m.userId]))}
-                        className={`border px-2 py-0.5 text-xs ${on ? 'border-zinc-900 bg-zinc-900 text-white' : 'border-line bg-white text-zinc-600 hover:bg-paper'} disabled:cursor-default`}
-                      >
-                        {on ? '✓ ' : '+ '}
-                        {m.displayName}
-                      </button>
-                    );
-                  })}
-              </div>
-              {isOwner && <p className="mt-0.5 text-[11px] text-zinc-500">Việc sẽ hiện ở làn của từng người trên Masterplan; ai cũng cập nhật được tiến độ.</p>}
-            </div>
-          )}
 
           <div className="grid grid-cols-3 gap-3">
             <div>

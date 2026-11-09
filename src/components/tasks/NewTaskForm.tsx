@@ -6,6 +6,7 @@ import { TASK_CATEGORIES, TASK_CATEGORY_LABEL } from '@/lib/types';
 import type { FormState } from '@/lib/auth/actions';
 import { createTaskAction } from '@/app/(app)/projects/[id]/tasks/actions';
 import { FormMessage, SubmitButton } from '@/components/ui/FormBits';
+import { AssigneePicker, type AssigneeValue } from './AssigneePicker';
 
 const field = 'w-full border border-line bg-white px-2 py-1.5 text-sm outline-none focus:border-zinc-800';
 
@@ -38,11 +39,15 @@ export function NewTaskForm({
   const [startDate, setStartDate] = useState(initialParent?.startDate ?? defaultStart);
   const [dueDate, setDueDate] = useState(initialParent?.dueDate ?? defaultDue);
   const parent = parents.find((t) => t.id === parentId);
+  const [who, setWho] = useState<AssigneeValue>({ team: false, ids: [] });
   const [state, action] = useActionState<FormState, FormData>(createTaskAction, {});
   const formRef = useRef<HTMLFormElement>(null);
 
   useEffect(() => {
-    if (state.ok) formRef.current?.reset();
+    if (state.ok) {
+      formRef.current?.reset();
+      setWho({ team: false, ids: [] });
+    }
   }, [state]);
 
   if (!open) {
@@ -64,6 +69,7 @@ export function NewTaskForm({
           onChange={(e) => {
             const p = parents.find((t) => t.id === e.target.value);
             setParentId(e.target.value);
+            if (e.target.value) setWho((w) => (w.team ? { team: false, ids: [] } : w));
             if (p) {
               setStartDate(p.startDate);
               setDueDate(p.dueDate);
@@ -109,36 +115,19 @@ export function NewTaskForm({
         <div className="md:col-span-2">
           <label className="mb-1 block text-xs font-medium">Người phụ trách</label>
           {isOwner ? (
-            <select name="assigneeId" className={field} defaultValue="">
-              <option value="">— Chưa giao —</option>
-              {!parent && <option value="__team">👥 Cả nhóm (chia subtask cho từng người)</option>}
-              {members
-                .filter((m) => m.role !== 'viewer')
-                .map((m) => (
-                  <option key={m.userId} value={m.userId}>
-                    {m.displayName}
-                    {m.userId === currentUserId ? ' (bạn)' : ''}
-                  </option>
-                ))}
-            </select>
+            <>
+              <AssigneePicker
+                value={who}
+                onChange={setWho}
+                members={members}
+                allowTeam={!parent}
+                currentUserId={currentUserId}
+              />
+              <input type="hidden" name="assigneeId" value={who.team ? '__team' : who.ids[0] ?? ''} />
+              {!who.team && who.ids.slice(1).map((id) => <input key={id} type="hidden" name="coAssigneeIds" value={id} />)}
+            </>
           ) : (
             <p className="py-1.5 text-sm text-zinc-600">Bạn (thành viên chỉ tự giao cho mình)</p>
-          )}
-          {isOwner && (
-            <details className="mt-1">
-              <summary className="cursor-pointer text-[11px] text-zinc-500 hover:text-zinc-900">+ Người cùng làm (2–3 người một việc)</summary>
-              <div className="mt-1 grid grid-cols-2 gap-x-3 gap-y-0.5 border border-line p-1.5">
-                {members
-                  .filter((m) => m.role !== 'viewer')
-                  .map((m) => (
-                    <label key={m.userId} className="flex items-center gap-1.5 text-xs">
-                      <input type="checkbox" name="coAssigneeIds" value={m.userId} />
-                      {m.displayName}
-                    </label>
-                  ))}
-              </div>
-              <p className="mt-0.5 text-[10px] text-zinc-500">Nếu không chọn người chính, người đầu tiên được chọn sẽ là người chính.</p>
-            </details>
           )}
         </div>
         <div>

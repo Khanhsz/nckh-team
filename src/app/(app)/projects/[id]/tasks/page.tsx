@@ -6,7 +6,7 @@ import { addDays, dueLabel, formatShort, todayISO } from '@/lib/dates';
 import { Avatar, CategoryDot, SubtaskMark } from '@/components/ui/badges';
 import { isAssignedTo, TASK_CATEGORY_LABEL } from '@/lib/types';
 import { NewTaskForm } from '@/components/tasks/NewTaskForm';
-import { AssigneeSelect, CoAssigneePicker, ProgressInput, StatusSelect } from '@/components/tasks/TaskControls';
+import { ProgressInput, StatusSelect, TaskAssigneeCell } from '@/components/tasks/TaskControls';
 import { deleteTaskAction } from './actions';
 
 export default async function TasksPage({
@@ -121,12 +121,13 @@ export default async function TasksPage({
                   <td className="px-3 py-2.5 text-xs text-zinc-600">{t.milestoneId ? milestoneById.get(t.milestoneId)?.name : '—'}</td>
                   <td className="px-3 py-2.5">
                     {manage ? (
-                      <>
-                        <AssigneeSelect taskId={t.id} value={t.isTeam ? '__team' : t.assigneeId} members={members} allowTeam={!t.parentId} />
-                        {!t.isTeam && t.assigneeId && (
-                          <CoAssigneePicker key={t.coAssigneeIds.join()} taskId={t.id} primaryId={t.assigneeId} value={t.coAssigneeIds} members={members} />
-                        )}
-                      </>
+                      <TaskAssigneeCell
+                        key={`${t.isTeam}-${t.assigneeId}-${t.coAssigneeIds.join()}`}
+                        taskId={t.id}
+                        task={t}
+                        members={members}
+                        allowTeam={!t.parentId}
+                      />
                     ) : t.isTeam ? (
                       <span className="text-xs font-medium">👥 Cả nhóm</span>
                     ) : assignee ? (
