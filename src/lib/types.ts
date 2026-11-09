@@ -97,6 +97,8 @@ export interface Paper {
   verified: Record<string, { by: string; at: string }>;
   /** Thông tin xuất bản (Gemini đọc từ PDF, bổ sung bằng Crossref) */
   pub: PaperPublication;
+  /** Quan hệ giữa các biến (null = chưa phân tích) */
+  relations: Relation[] | null;
 }
 
 export interface PaperPublication {
@@ -185,3 +187,19 @@ export const taskAssignees = (t: Pick<Task, 'assigneeId' | 'coAssigneeIds'>): st
   t.assigneeId ? [t.assigneeId, ...t.coAssigneeIds.filter((id) => id !== t.assigneeId)] : [...t.coAssigneeIds];
 export const isAssignedTo = (t: Pick<Task, 'assigneeId' | 'coAssigneeIds'>, userId: string) =>
   t.assigneeId === userId || t.coAssigneeIds.includes(userId);
+
+/* ---------------- Bản đồ biến – giả thuyết ---------------- */
+export type RelType = 'direct' | 'mediation' | 'moderation';
+export type RelResult = 'supported' | 'not_supported' | 'partial' | 'not_tested';
+export type RelSign = 'positive' | 'negative' | 'none' | 'unclear';
+export interface Relation {
+  from: string;
+  to: string;
+  type: RelType;
+  /** biến trung gian / điều tiết */
+  via: string | null;
+  sign: RelSign;
+  result: RelResult;
+  hypothesis: string | null;
+  page: string | null;
+}

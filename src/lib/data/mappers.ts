@@ -1,6 +1,6 @@
 import type { Database } from '../supabase/database.types';
 import type { Milestone, Paper, PaperStatus, Profile, Project, ProjectRole, Task, TaskStatus } from '../types';
-import { isTaskCategory, type CslItem } from '../types';
+import { isTaskCategory, type CslItem, type Relation } from '../types';
 
 type T = Database['public']['Tables'];
 
@@ -85,6 +85,7 @@ export const mapPaper = (r: T['papers']['Row']): Paper => {
     fields,
     warnings: Array.isArray(r.warnings) ? r.warnings.filter((w): w is string => typeof w === 'string') : [],
     verified,
+    relations: Array.isArray(r.relations) ? (r.relations as unknown as Relation[]) : null,
     pub: {
       doi: r.doi ?? null,
       journal: r.journal ?? null,

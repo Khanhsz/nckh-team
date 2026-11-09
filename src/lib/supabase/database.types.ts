@@ -21,6 +21,12 @@ export type Database = {
           { foreignKeyName: 'milestones_project_id_fkey'; columns: ['project_id']; isOneToOne: false; referencedRelation: 'projects'; referencedColumns: ['id'] }
         ];
       };
+      project_constructs: {
+        Row: { project_id: string; raw_key: string; canonical: string; updated_at: string };
+        Insert: { project_id: string; raw_key: string; canonical: string; updated_at?: string };
+        Update: { canonical?: string; updated_at?: string };
+        Relationships: [];
+      };
       user_notify: {
         Row: { user_id: string; calendar_token: string | null; digest_email: boolean; last_digest_on: string | null; updated_at: string };
         Insert: { user_id: string; calendar_token?: string | null; digest_email?: boolean; updated_at?: string };
@@ -50,19 +56,19 @@ export type Database = {
           created_at: string; created_by: string; error: string | null; evidence: Json; fields: Json; file_name: string; id: string;
           model: string | null; project_id: string; status: string; storage_path: string | null; updated_at: string; updated_by: string | null; warnings: Json;
           drive_file_id: string | null; drive_modified_time: string | null; drive_web_link: string | null; file_size: number | null; extracted_at: string | null; verified: Json;
-          doi: string | null; journal: string | null; issns: string[]; publisher: string | null; pub_year: number | null; cited_by: number | null; meta_source: string | null; meta_checked_at: string | null; journal_norm: string | null; publisher_norm: string | null; csl: Json | null;
+          doi: string | null; journal: string | null; issns: string[]; publisher: string | null; pub_year: number | null; cited_by: number | null; meta_source: string | null; meta_checked_at: string | null; journal_norm: string | null; publisher_norm: string | null; csl: Json | null; relations: Json | null; relations_at: string | null;
         };
         Insert: {
           created_at?: string; created_by?: string; error?: string | null; evidence?: Json; fields?: Json; file_name: string; id?: string;
           model?: string | null; project_id: string; status?: string; storage_path?: string | null; updated_at?: string; updated_by?: string | null; warnings?: Json;
           drive_file_id?: string | null; drive_modified_time?: string | null; drive_web_link?: string | null; file_size?: number | null; extracted_at?: string | null; verified?: Json;
-          doi?: string | null; journal?: string | null; issns?: string[]; publisher?: string | null; pub_year?: number | null; cited_by?: number | null; meta_source?: string | null; meta_checked_at?: string | null; csl?: Json | null;
+          doi?: string | null; journal?: string | null; issns?: string[]; publisher?: string | null; pub_year?: number | null; cited_by?: number | null; meta_source?: string | null; meta_checked_at?: string | null; csl?: Json | null; relations?: Json | null; relations_at?: string | null;
         };
         Update: {
           created_at?: string; created_by?: string; error?: string | null; evidence?: Json; fields?: Json; file_name?: string; id?: string;
           model?: string | null; project_id?: string; status?: string; storage_path?: string | null; updated_at?: string; updated_by?: string | null; warnings?: Json;
           drive_file_id?: string | null; drive_modified_time?: string | null; drive_web_link?: string | null; file_size?: number | null; extracted_at?: string | null; verified?: Json;
-          doi?: string | null; journal?: string | null; issns?: string[]; publisher?: string | null; pub_year?: number | null; cited_by?: number | null; meta_source?: string | null; meta_checked_at?: string | null; csl?: Json | null;
+          doi?: string | null; journal?: string | null; issns?: string[]; publisher?: string | null; pub_year?: number | null; cited_by?: number | null; meta_source?: string | null; meta_checked_at?: string | null; csl?: Json | null; relations?: Json | null; relations_at?: string | null;
         };
         Relationships: [
           { foreignKeyName: 'papers_project_id_fkey'; columns: ['project_id']; isOneToOne: false; referencedRelation: 'projects'; referencedColumns: ['id'] }

@@ -183,7 +183,10 @@ export async function extractPaperAction(paperId: string): Promise<{ error?: str
         model: result.model,
         error: null,
         extracted_at: new Date().toISOString(),
-        verified: {}
+        verified: {},
+        // Nội dung đổi → phân tích giả thuyết lại ở Bản đồ biến
+        relations: null,
+        relations_at: null
       })
       .eq('id', paperId);
     if (saveErr) throw saveErr;

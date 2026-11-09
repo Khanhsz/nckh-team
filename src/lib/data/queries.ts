@@ -183,3 +183,10 @@ export async function getNotifySettings(userId: string): Promise<{ calendarToken
   const { data } = await sb.from('user_notify').select('calendar_token, digest_email').eq('user_id', userId).maybeSingle();
   return { calendarToken: data?.calendar_token ?? null, digestEmail: data?.digest_email ?? true };
 }
+
+/** Ánh xạ tên biến → tên chuẩn của dự án */
+export async function listConstructMap(projectId: string): Promise<Map<string, string>> {
+  const sb = await createClient();
+  const { data } = await sb.from('project_constructs').select('raw_key, canonical').eq('project_id', projectId).limit(5000);
+  return new Map((data ?? []).map((r) => [r.raw_key, r.canonical]));
+}
