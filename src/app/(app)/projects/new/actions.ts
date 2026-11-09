@@ -11,7 +11,7 @@ import { str } from '@/lib/site';
 import type { FormState } from '@/lib/auth/actions';
 
 /** Kế hoạch mẫu cho một đề tài định lượng — tỉ lệ theo tổng thời gian dự án. */
-type Cat = 'task' | 'meeting' | 'data' | 'survey';
+type Cat = 'task' | 'data' | 'survey';
 const TEMPLATE: { milestone: string; at: number; tasks: [string, number, number, Cat?][] }[] = [
   {
     milestone: 'Tổng quan tài liệu',

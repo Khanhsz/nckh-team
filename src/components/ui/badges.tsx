@@ -48,7 +48,6 @@ export function Avatar({ name, email, size = 24 }: { name: string; email: string
 export const CATEGORY_STYLE: Record<TaskCategory, { chip: string; fill: string; dot: string; sub: string; edge: string }> = {
   // Bảng màu sự kiện kiểu Google Calendar: nền nhạt, chữ đậm cùng tông
   task: { chip: 'bg-[#d3e3fd] border-transparent text-[#041e49]', fill: 'bg-[#0b57d0]', dot: 'bg-[#0b57d0]', sub: 'bg-white border-[#a8c7fa] text-[#041e49]', edge: 'border-[#0b57d0]' },
-  meeting: { chip: 'bg-[#f3e1fa] border-transparent text-[#3b0a52]', fill: 'bg-[#8e24aa]', dot: 'bg-[#8e24aa]', sub: 'bg-white border-[#dcb4ec] text-[#3b0a52]', edge: 'border-[#8e24aa]' },
   data: { chip: 'bg-[#c4eed0] border-transparent text-[#072711]', fill: 'bg-[#188038]', dot: 'bg-[#188038]', sub: 'bg-white border-[#8fd5a6] text-[#072711]', edge: 'border-[#188038]' },
   survey: { chip: 'bg-[#ffe9b0] border-transparent text-[#3d2e00]', fill: 'bg-[#f9ab00]', dot: 'bg-[#f9ab00]', sub: 'bg-white border-[#fcd36b] text-[#3d2e00]', edge: 'border-[#f9ab00]' }
 };
